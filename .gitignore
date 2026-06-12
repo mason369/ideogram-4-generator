@@ -1,0 +1,15 @@
+node_modules/
+ideogram_tool/static/
+dist/
+build/
+runtime/
+venv/
+venv310/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.tmp/
+models/hf-cache/
+*.spec.bak
