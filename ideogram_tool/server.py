@@ -13,13 +13,11 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .local_cuda import LocalRuntimeError, generate_with_local_cuda
-from .official_api import IdeogramApiError, generate_with_official_magic, optimize_prompt_with_official_magic
+from .official_api import IdeogramApiError, optimize_prompt_with_official_magic
 from .schemas import AppConfig, ExecutionMode, IdeogramRequest, IdeogramResult, MagicPromptResult
 from .validators import (
     CANVAS_PRESETS,
     CANDIDATE_COUNTS,
-    OFFICIAL_CANVAS_PRESETS,
-    OFFICIAL_V4_RESOLUTIONS,
     SAMPLER_PRESETS,
     validate_dimensions,
 )
@@ -61,18 +59,22 @@ def create_app() -> FastAPI:
                 "execution_mode": "local_plain",
             },
             canvas_presets=CANVAS_PRESETS,
-            official_canvas_presets=OFFICIAL_CANVAS_PRESETS,
             sampler_presets=SAMPLER_PRESETS,
             candidate_counts=CANDIDATE_COUNTS,
-            official_resolutions=OFFICIAL_V4_RESOLUTIONS,
         )
 
     @app.post("/api/generate", response_model=IdeogramResult)
     def generate(params: IdeogramRequest) -> IdeogramResult:
         try:
-            if params.execution_mode == ExecutionMode.official_magic:
-                return generate_with_official_magic(params, out_dir)
             validate_dimensions(params.width, params.height)
+            if params.execution_mode == ExecutionMode.official_magic:
+                magic = optimize_prompt_with_official_magic(params)
+                return generate_with_local_cuda(
+                    params,
+                    out_dir,
+                    optimized_prompt=magic.optimized_prompt,
+                    prompt_flow="official_magic_prompt_then_local_cuda",
+                )
             return generate_with_local_cuda(params, out_dir)
         except (ValueError, IdeogramApiError, LocalRuntimeError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -18,9 +18,7 @@ export async function generateImage(form: FormState): Promise<IdeogramResult> {
       seed: form.seed,
       candidate_count: form.candidate_count,
       execution_mode: form.execution_mode,
-      api_key: form.api_key.trim() || null,
-      enable_copyright_detection:
-        form.execution_mode === "official_magic" ? form.enable_copyright_detection : null
+      api_key: form.api_key.trim() || null
     })
   });
   if (!response.ok) {
@@ -48,8 +46,7 @@ export async function optimizePrompt(form: FormState): Promise<MagicPromptResult
       seed: form.seed,
       candidate_count: form.candidate_count,
       execution_mode: "official_magic",
-      api_key: form.api_key.trim() || null,
-      enable_copyright_detection: null
+      api_key: form.api_key.trim() || null
     })
   });
   if (!response.ok) {

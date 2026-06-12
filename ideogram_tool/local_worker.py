@@ -23,7 +23,7 @@ def run_payload(payload: dict[str, Any]) -> dict[str, Any]:
         from ideogram4 import PRESETS, Ideogram4Pipeline, Ideogram4PipelineConfig
     except Exception as exc:
         raise RuntimeError(
-            "official ideogram4 runtime is unavailable. Install with "
+            "open-weight ideogram4 runtime is unavailable. Install with "
             "`pip install git+https://github.com/ideogram-oss/ideogram4.git`."
         ) from exc
 

@@ -10,16 +10,13 @@ export interface FormState {
   candidate_count: number;
   execution_mode: ExecutionMode;
   api_key: string;
-  enable_copyright_detection: boolean;
 }
 
 export interface AppConfig {
-  defaults: Omit<FormState, "api_key" | "enable_copyright_detection">;
+  defaults: Omit<FormState, "api_key">;
   canvas_presets: Array<{ key: string; width: number; height: number }>;
-  official_canvas_presets: Array<{ key: string; width: number; height: number }>;
   sampler_presets: SamplerPreset[];
   candidate_counts: number[];
-  official_resolutions: string[];
 }
 
 export interface GeneratedImage {

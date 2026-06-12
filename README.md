@@ -7,7 +7,7 @@
 复刻 TelkNet 项目中 `Ideogram 4` 图像生成工具的开源独立版。它保留原工具的参数习惯：`prompt / width / height / sampler_preset / seed / candidate_count`，并提供两条明确链路：
 
 - **本地 CUDA 开放权重链路**：默认模式，不接入官方 Magic Prompt；自然语言提示词按原文送入本地 Ideogram 4 运行时。
-- **官方提示词优化链路**：输入 Ideogram API Key 后，先调用官方 `/v1/ideogram-v4/magic-prompt`，再将返回的 `json_prompt` 送入官方 `/v1/ideogram-v4/generate`。
+- **官方提示词优化链路**：输入 Ideogram API Key 后，只调用官方 `/v1/ideogram-v4/magic-prompt`；返回的 `json_prompt` 会继续交给本地 CUDA Ideogram 4 运行时出图。
 
 > 在线体验：已接入官方提示词优化链路的 TelkNet Ideogram 4 页面在 [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4)。本仓库是对应的开源本地版，启动后访问 `http://127.0.0.1:7860`。
 
@@ -23,10 +23,10 @@
 - **中文默认 + 英文切换**：界面默认中文，可在右上角切换 English；README 同步提供中英两版。
 - **Seed 控件**：前端提供 `SEED（可选）` 输入框和骰子按钮；`0` 表示运行时随机，点击骰子生成固定 seed。
 - **本地开放权重模式**：通过官方 `ideogram-oss/ideogram4` 推理包调用 `ideogram-ai/ideogram-4-nf4` 或 `fp8` 权重。
-- **官方 API 模式**：封装 API Key、Magic Prompt、Generate v4 和图片下载，生成后的临时 URL 会被下载到本地 `runtime/outputs/`。
-- **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发 Generate 出图；生成图片按钮才会继续调用收费的出图接口。
-- **严格参数校验**：本地模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；官方模式严格使用 Ideogram v4 固定 `resolution`，支持 `1440x2560` 等官方枚举；候选图 `1-4`；seed 范围 `0-2147483647`。
-- **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、尺寸不在官方 v4 固定 resolution 列表、CUDA 不可用或权重未授权时都会显式失败。
+- **官方 Magic Prompt 模式**：封装 API Key 与 Magic Prompt，请求只到官方提示词优化接口；生成图片时使用优化后的 JSON Prompt 本地渲染到 `runtime/outputs/`。
+- **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发本地出图；生成图片按钮会继续使用本地 CUDA。
+- **严格参数校验**：所有生成模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；Magic Prompt 需要支持的比例桶；候选图 `1-4`；seed 范围 `0-2147483647`。
+- **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、Magic Prompt 比例不支持、CUDA 不可用或权重未授权时都会显式失败。
 - **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，release workflow 会自动下载并打包 Ideogram 4 NF4 权重缓存，最终用户不需要手动下载模型。
 
 ## 调用链路说明
@@ -35,14 +35,14 @@
 |------|---------|------------------------|------|------|
 | `local_plain` | 本地原文提示词 | 否 | 自然语言 prompt | 本地 PNG |
 | `local_json` | 本地结构化 JSON | 否 | Ideogram 4 JSON caption | 本地 PNG |
-| `official_magic` | 官方提示词优化 | 是 | 自然语言 prompt + API Key | 官方 API PNG 下载副本 |
+| `official_magic` | 官方提示词优化 | 是 | 自然语言 prompt + API Key | 本地 PNG（提示词由官方优化） |
 
-本地模式和 TelkNet 原工具一致保留任意 `256-2048`、16 步进画布；官方 v4 API 当前只接受固定 `resolution` 枚举，所以官方模式会严格检查尺寸，不会自动改成“最接近”的尺寸。
+所有生成模式都使用本地 `256-2048`、16 步进画布；官方链路只负责把自然语言 prompt 优化成 Ideogram 4 JSON Prompt，不负责生成图片。
 
 官方模式包含两个动作：
 
 - `仅优化提示词`：只调用 `/v1/ideogram-v4/magic-prompt`，返回结构化 JSON Prompt，不生成图片。
-- `生成图像`：先调用 Magic Prompt，再调用 `/v1/ideogram-v4/generate` 出图并下载 PNG。Ideogram API Pricing 当前按输出图片计费；Magic Prompt 没有在公开价格表中列出单独费用，但仍需要 Active API Key。
+- `生成图像`：先调用 Magic Prompt，再把返回的 JSON Prompt 送入本地 CUDA 运行时。项目不会请求官方 `/v1/ideogram-v4/generate`；Magic Prompt 仍需要 Active API Key。
 
 ## 源码拉取与运行
 
@@ -86,7 +86,7 @@ npm install
 npm run build
 ```
 
-### 4. 运行官方 API 模式（无需本地 GPU）
+### 4. 运行仅优化提示词模式（无需本地 GPU，可选）
 
 Windows：
 
@@ -101,9 +101,11 @@ source venv310/bin/activate
 python run.py
 ```
 
-打开 `http://127.0.0.1:7860`，选择 **官方提示词优化**。可以在界面输入 Ideogram API Key，也可以设置环境变量 `IDEOGRAM_API_KEY`。
+打开 `http://127.0.0.1:7860`，选择 **官方提示词优化**，点击 **仅优化提示词**。可以在界面输入 Ideogram API Key，也可以设置环境变量 `IDEOGRAM_API_KEY`。
 
-### 5. 源码方式运行本地 CUDA 开放权重模式
+> 这个动作只调用 Magic Prompt，不生成图片。只要点击 **生成图像**，就会进入本地 CUDA 出图流程，需要执行下一节的本地模型准备。
+
+### 5. 源码方式运行本地 CUDA 生成模式
 
 源码运行时需要开发者本机具备 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可：
 
@@ -167,7 +169,7 @@ python run.py --self-test
 | `seed` | `0` | `0-2147483647`，`0` 表示随机 |
 | `candidate_count` | `1` | `1-4` |
 
-本地模式中，如果 seed 为 `0`，后端会生成一个随机 base seed；多候选图使用 `base_seed + index`。官方 API v4 文档目前没有暴露请求 seed 参数；官方模式会记录 API 返回的 seed，但不会向官方接口发送未文档化字段。
+如果 seed 为 `0`，后端会生成一个随机 base seed；多候选图使用 `base_seed + index`。官方提示词优化模式同样使用这个本地 seed 规则，因为图片由本地 CUDA 生成，不会向官方出图接口发送 seed 或出图请求。
 
 ## 模型与公开排行
 
@@ -183,7 +185,6 @@ Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，官�
 - [Ideogram 4 GitHub](https://github.com/ideogram-oss/ideogram4)
 - [Ideogram 4 NF4 Hugging Face Model Card](https://huggingface.co/ideogram-ai/ideogram-4-nf4)
 - [Ideogram 4 技术博客](https://ideogram.ai/blog/ideogram-4.0/)
-- [Generate with Ideogram 4.0 API](https://developer.ideogram.ai/api-reference/api-reference/generate-v4)
 - [Magic Prompt v4 API](https://developer.ideogram.ai/api-reference/api-reference/magic-prompt-v4)
 
 ## 论文 / 引用
@@ -215,7 +216,7 @@ Release 打包规则：
 - 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可。
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
-- 便携包会包含前端静态资源、Python 服务、官方运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。
+- 便携包会包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。
 - 如果完整包超过 GitHub Release 单文件上传限制，workflow 会自动生成 `.part001` / `.part002` 分卷和 `.sha256` 校验文件；下载所有分卷后按顺序合并即可得到原始压缩包。
 - 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。
 
@@ -234,4 +235,4 @@ python run.py
 
 ## License
 
-本仓库代码使用 MIT License。Ideogram 4 权重、官方运行时和模型许可请遵循 Ideogram / Hugging Face 页面中的对应条款。
+本仓库代码使用 MIT License。Ideogram 4 权重、开放权重运行时和模型许可请遵循 Ideogram / Hugging Face 页面中的对应条款。

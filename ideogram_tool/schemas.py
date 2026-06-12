@@ -21,7 +21,6 @@ class IdeogramRequest(BaseModel):
     candidate_count: int = Field(default=1, ge=1, le=4)
     execution_mode: ExecutionMode = ExecutionMode.local_plain
     api_key: str | None = None
-    enable_copyright_detection: bool | None = None
 
 
 class GeneratedImage(BaseModel):
@@ -50,7 +49,5 @@ class MagicPromptResult(BaseModel):
 class AppConfig(BaseModel):
     defaults: dict[str, Any]
     canvas_presets: list[dict[str, Any]]
-    official_canvas_presets: list[dict[str, Any]]
     sampler_presets: list[str]
     candidate_counts: list[int]
-    official_resolutions: list[str]

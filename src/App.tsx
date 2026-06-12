@@ -31,8 +31,7 @@ const DEFAULT_FORM: FormState = {
   seed: 0,
   candidate_count: 1,
   execution_mode: "local_plain",
-  api_key: "",
-  enable_copyright_detection: false
+  api_key: ""
 };
 
 function randomSeed() {
@@ -165,15 +164,7 @@ export default function App() {
       .catch((exc) => setError(String(exc)));
   }, []);
 
-  const officialResolutionSupported = config?.official_resolutions.includes(`${form.width}x${form.height}`) ?? false;
-  const localCanvasPresets = config?.canvas_presets || [];
-  const officialCanvasPresets = config?.official_canvas_presets || [];
-  const activeCanvasPresets = form.execution_mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
-  const officialDimensionMax = Math.max(
-    2048,
-    ...(config?.official_resolutions || []).flatMap((resolution) => resolution.split("x").map((value) => Number.parseInt(value, 10)))
-  );
-  const dimensionMax = form.execution_mode === "official_magic" ? officialDimensionMax : 2048;
+  const activeCanvasPresets = config?.canvas_presets || [];
   const canSubmit = form.prompt.trim().length > 0 && !loading;
 
   const preview = useMemo(() => {
@@ -185,9 +176,7 @@ export default function App() {
       seed: form.seed,
       candidate_count: form.candidate_count,
       execution_mode: form.execution_mode,
-      api_key: form.api_key ? "[hidden]" : null,
-      enable_copyright_detection:
-        form.execution_mode === "official_magic" ? form.enable_copyright_detection : null
+      api_key: form.api_key ? "[hidden]" : null
     };
   }, [form]);
 
@@ -196,17 +185,7 @@ export default function App() {
   }
 
   function switchMode(mode: ExecutionMode) {
-    setForm((prev) => {
-      const sourcePresets = prev.execution_mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
-      const targetPresets = mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
-      const currentPresetKey = sourcePresets.find((preset) => preset.width === prev.width && preset.height === prev.height)?.key;
-      const mappedPreset = currentPresetKey ? targetPresets.find((preset) => preset.key === currentPresetKey) : null;
-      return {
-        ...prev,
-        execution_mode: mode,
-        ...(mappedPreset ? { width: mappedPreset.width, height: mappedPreset.height } : {})
-      };
-    });
+    setForm((prev) => ({ ...prev, execution_mode: mode }));
   }
 
   async function submit() {
@@ -323,14 +302,6 @@ export default function App() {
                   />
                 </span>
               </label>
-              <label className="check-field">
-                <input
-                  type="checkbox"
-                  checked={form.enable_copyright_detection}
-                  onChange={(event) => update("enable_copyright_detection", event.target.checked)}
-                />
-                {t("copyrightDetection")}
-              </label>
             </div>
           ) : null}
 
@@ -357,7 +328,7 @@ export default function App() {
                 <input
                   type="number"
                   min={256}
-                  max={dimensionMax}
+                  max={2048}
                   step={16}
                   value={form.width}
                   onChange={(event) => update("width", Number.parseInt(event.target.value || "0", 10))}
@@ -368,16 +339,13 @@ export default function App() {
                 <input
                   type="number"
                   min={256}
-                  max={dimensionMax}
+                  max={2048}
                   step={16}
                   value={form.height}
                   onChange={(event) => update("height", Number.parseInt(event.target.value || "0", 10))}
                 />
               </label>
             </div>
-            {form.execution_mode === "official_magic" && !officialResolutionSupported ? (
-              <p className="warning-text">{t("officialResolutionWarning")}</p>
-            ) : null}
             <div className="preset-row">
               <FieldLabel label={t("presetsLabel")} />
               <div>

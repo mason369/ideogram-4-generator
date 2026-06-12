@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from ideogram_tool.schemas import IdeogramRequest
 from ideogram_tool.validators import (
-    OFFICIAL_CANVAS_PRESETS,
+    CANVAS_PRESETS,
     aspect_ratio_for_size,
     normalize_seed,
-    require_official_resolution,
     validate_dimensions,
 )
 
@@ -29,21 +27,16 @@ def test_zero_seed_is_randomized_and_candidate_range_is_checked(monkeypatch: pyt
         normalize_seed(2147483647, 2)
 
 
-def test_official_resolution_is_strict() -> None:
-    assert require_official_resolution(IdeogramRequest(prompt="x", width=2048, height=2048)) == "2048x2048"
-    with pytest.raises(ValueError, match="fixed resolution list"):
-        require_official_resolution(IdeogramRequest(prompt="x", width=1152, height=2048))
-
-
-def test_official_canvas_presets_match_official_resolution_list() -> None:
-    assert {"key": "portrait9x16", "width": 1440, "height": 2560} in OFFICIAL_CANVAS_PRESETS
-    for preset in OFFICIAL_CANVAS_PRESETS:
-        request = IdeogramRequest(prompt="x", width=preset["width"], height=preset["height"])
-        assert require_official_resolution(request) == f"{preset['width']}x{preset['height']}"
+def test_canvas_presets_are_local_cuda_and_magic_prompt_compatible() -> None:
+    assert {"key": "portrait9x16", "width": 1152, "height": 2048} in CANVAS_PRESETS
+    assert {"key": "poster2x3", "width": 1344, "height": 2016} in CANVAS_PRESETS
+    for preset in CANVAS_PRESETS:
+        validate_dimensions(preset["width"], preset["height"])
+        assert aspect_ratio_for_size(preset["width"], preset["height"])
 
 
 def test_magic_aspect_bucket_is_strict() -> None:
     assert aspect_ratio_for_size(2048, 2048) == "1x1"
-    assert aspect_ratio_for_size(1440, 2560) == "9x16"
+    assert aspect_ratio_for_size(1152, 2048) == "9x16"
     with pytest.raises(ValueError, match="supported aspect ratio"):
         aspect_ratio_for_size(1360, 2048)

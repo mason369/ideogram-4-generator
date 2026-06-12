@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from .schemas import GeneratedImage, IdeogramRequest, IdeogramResult
 from .validators import normalize_seed, parse_json_prompt
@@ -24,16 +25,26 @@ def _hf_cache_env() -> dict[str, str]:
     return env
 
 
-def generate_with_local_cuda(params: IdeogramRequest, output_dir: Path) -> IdeogramResult:
+def generate_with_local_cuda(
+    params: IdeogramRequest,
+    output_dir: Path,
+    *,
+    optimized_prompt: dict[str, Any] | None = None,
+    prompt_flow: str | None = None,
+) -> IdeogramResult:
     from .local_worker import run_payload
 
     base_seed = normalize_seed(params.seed, params.candidate_count)
     prompt_for_runtime = params.prompt
-    is_structured = params.execution_mode.value == "local_json"
-    optimized_prompt = None
+    is_structured = params.execution_mode.value == "local_json" or optimized_prompt is not None
+    active_prompt_flow = prompt_flow
     if is_structured:
-        optimized_prompt = parse_json_prompt(params.prompt)
+        if optimized_prompt is None:
+            optimized_prompt = parse_json_prompt(params.prompt)
+            active_prompt_flow = "user_supplied_structured_json_prompt"
         prompt_for_runtime = json.dumps(optimized_prompt, ensure_ascii=False, separators=(",", ":"))
+    if active_prompt_flow is None:
+        active_prompt_flow = "plain_prompt_without_official_magic_prompt"
 
     output_dir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="ideogram4-local-") as tmp:
@@ -86,9 +97,7 @@ def generate_with_local_cuda(params: IdeogramRequest, output_dir: Path) -> Ideog
         optimized_prompt=optimized_prompt,
         request={
             "runtime": "ideogram-oss/ideogram4",
-            "prompt_flow": "plain_prompt_without_official_magic_prompt"
-            if not is_structured
-            else "user_supplied_structured_json_prompt",
+            "prompt_flow": active_prompt_flow,
             "width": params.width,
             "height": params.height,
             "sampler_preset": params.sampler_preset,

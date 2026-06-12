@@ -5,8 +5,6 @@ import secrets
 from math import gcd
 from typing import Any
 
-from .schemas import IdeogramRequest
-
 IDEOGRAM_DIMENSION_MIN = 256
 IDEOGRAM_DIMENSION_MAX = 2048
 IDEOGRAM_DIMENSION_STEP = 16
@@ -20,44 +18,9 @@ CANVAS_PRESETS = [
     {"key": "square2k", "width": 2048, "height": 2048},
     {"key": "portrait9x16", "width": 1152, "height": 2048},
     {"key": "landscape16x9", "width": 2048, "height": 1152},
-    {"key": "poster2x3", "width": 1360, "height": 2048},
+    {"key": "poster2x3", "width": 1344, "height": 2016},
     {"key": "wide4x1", "width": 2048, "height": 512},
     {"key": "tall1x4", "width": 512, "height": 2048},
-]
-
-OFFICIAL_CANVAS_PRESETS = [
-    {"key": "square2k", "width": 2048, "height": 2048},
-    {"key": "portrait9x16", "width": 1440, "height": 2560},
-    {"key": "landscape16x9", "width": 2560, "height": 1440},
-    {"key": "poster2x3", "width": 1600, "height": 2560},
-    {"key": "wide4x1", "width": 2880, "height": 1440},
-    {"key": "tall1x4", "width": 1440, "height": 2880},
-]
-
-OFFICIAL_V4_RESOLUTIONS = [
-    "2048x2048",
-    "1440x2880",
-    "2880x1440",
-    "1664x2496",
-    "2496x1664",
-    "1792x2240",
-    "2240x1792",
-    "1440x2560",
-    "2560x1440",
-    "1600x2560",
-    "2560x1600",
-    "1728x2304",
-    "2304x1728",
-    "1296x3168",
-    "3168x1296",
-    "1152x2944",
-    "2944x1152",
-    "1248x3328",
-    "3328x1248",
-    "1280x3072",
-    "3072x1280",
-    "1024x3072",
-    "3072x1024",
 ]
 
 OFFICIAL_MAGIC_ASPECTS = {
@@ -78,12 +41,6 @@ OFFICIAL_MAGIC_ASPECTS = {
     "2x1",
     "3x1",
     "4x1",
-}
-
-SAMPLER_TO_RENDERING_SPEED = {
-    "V4_QUALITY_48": "QUALITY",
-    "V4_DEFAULT_20": "DEFAULT",
-    "V4_TURBO_12": "TURBO",
 }
 
 
@@ -111,20 +68,6 @@ def normalize_seed(seed: int, candidate_count: int) -> int:
     if seed + candidate_count - 1 > MAX_IDEOGRAM_SEED:
         raise ValueError(f"seed range exceeds {MAX_IDEOGRAM_SEED} for the selected candidate count")
     return seed
-
-
-def resolution_for_request(params: IdeogramRequest) -> str:
-    return f"{params.width}x{params.height}"
-
-
-def require_official_resolution(params: IdeogramRequest) -> str:
-    resolution = resolution_for_request(params)
-    if resolution not in OFFICIAL_V4_RESOLUTIONS:
-        raise ValueError(
-            "official Ideogram API v4 accepts a fixed resolution list; "
-            f"{resolution} is not supported. Supported values: {', '.join(OFFICIAL_V4_RESOLUTIONS)}"
-        )
-    return resolution
 
 
 def aspect_ratio_for_size(width: int, height: int) -> str:

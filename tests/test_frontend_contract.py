@@ -15,9 +15,11 @@ def test_frontend_exposes_seed_input_and_random_button() -> None:
     assert 'placeholder="123456789"' in source
     assert 'aria-label={t("randomSeed")}' in source
     assert "optimizeOnly" in source
-    assert "official_canvas_presets" in source
     assert "activeCanvasPresets" in source
-    assert "/api/magic-prompt" in (ROOT / "src" / "api.ts").read_text(encoding="utf-8")
+    assert "official_canvas_presets" not in source
+    api_source = (ROOT / "src" / "api.ts").read_text(encoding="utf-8")
+    assert "/api/magic-prompt" in api_source
+    assert "enable_copyright_detection" not in api_source
 
 
 def test_language_packs_include_required_selector_text() -> None:
