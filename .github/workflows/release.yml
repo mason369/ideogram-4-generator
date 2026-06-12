@@ -15,22 +15,20 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-gpu-bundle:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
             platform: Windows
-            archive: zip
-            torch_index: https://download.pytorch.org/whl/cu128
+            package_name: Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable
           - os: ubuntu-22.04
             platform: Linux
-            archive: tar.gz
-            torch_index: https://download.pytorch.org/whl/cu128
+            package_name: Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable
 
     runs-on: ${{ matrix.os }}
-    name: Build ${{ matrix.platform }} GPU
+    name: Build ${{ matrix.platform }} GPU CUDA NF4 bundle
 
     steps:
       - name: Checkout
@@ -54,58 +52,98 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libgl1 libegl1 libsndfile1 fonts-dejavu-core
 
+      - name: Verify model download token is configured
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN repository secret is required for release bundles."
+            echo "Accept the ideogram-ai/ideogram-4-nf4 license on Hugging Face and add a token as the HF_TOKEN secret."
+            exit 1
+          fi
+
       - name: Build frontend
         run: |
           npm install
           npm run typecheck
           npm run build
 
-      - name: Install runtime dependencies
+      - name: Install CUDA runtime dependencies
         shell: bash
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt -r requirements-dev.txt
-          pip install torch --index-url "${{ matrix.torch_index }}"
+          pip install torch --index-url https://download.pytorch.org/whl/cu128
           pip install git+https://github.com/ideogram-oss/ideogram4.git
 
-      - name: Download Ideogram 4 NF4 weights
+      - name: Download Ideogram 4 NF4 weights into bundle cache
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 --cache-dir models/hf-cache
 
+      - name: Sanitize Hugging Face cache before packaging
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python tools/sanitize_hf_cache.py --cache-dir models/hf-cache
+
+      - name: Verify bundled model cache exists
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          cache = Path("models/hf-cache/hub")
+          files = [p for p in cache.rglob("*") if p.is_file()]
+          if not files:
+              raise SystemExit("models/hf-cache/hub is empty; release bundle would not include the model.")
+          print(f"model cache files: {len(files)}")
+          PY
+
+      - name: Verify no token material is staged for release
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python tools/sanitize_hf_cache.py --cache-dir models/hf-cache
+
       - name: Run tests
         run: pytest -q
 
-      - name: Build executable
+      - name: Server self-test
+        run: python run.py --self-test
+
+      - name: Build executable with strict GPU dependency collection
+        env:
+          IDEOGRAM_STRICT_BUNDLE: "1"
         run: pyinstaller Ideogram4Generator.spec
 
-      - name: Create Windows package
+      - name: Create Windows model bundle
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $name = "Ideogram4Generator-Windows-GPU-Portable"
+          $name = "${{ matrix.package_name }}"
           Move-Item -LiteralPath "dist\Ideogram4Generator" -Destination "dist\$name"
           @"
-          Ideogram 4 Generator Windows GPU 便携版
+          Ideogram 4 Generator Windows GPU CUDA NF4 便携版
 
           使用方法：
             双击 Ideogram4Generator.exe
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            内置 Ideogram 4 NF4 权重缓存和 CUDA 版 PyTorch。
+            此 Release 产物已由 GitHub Actions 下载并内置 ideogram-ai/ideogram-4-nf4 权重缓存。
+            用户不需要手动下载模型。
             需要兼容 CUDA 的 NVIDIA 显卡；不满足条件会显式报错。
           "@ | Set-Content -LiteralPath "dist\$name\使用说明.txt" -Encoding UTF8
           Compress-Archive -Path "dist\$name" -DestinationPath "$name.zip" -Force
 
-      - name: Create Linux package
+      - name: Create Linux model bundle
         if: runner.os == 'Linux'
         run: |
-          name="Ideogram4Generator-Linux-GPU-Portable"
+          name="${{ matrix.package_name }}"
           mv "dist/Ideogram4Generator" "dist/${name}"
           chmod +x "dist/${name}/Ideogram4Generator"
           cat > "dist/${name}/使用说明.txt" <<'TXT'
-          Ideogram 4 Generator Linux GPU 便携版
+          Ideogram 4 Generator Linux GPU CUDA NF4 便携版
 
           使用方法：
             chmod +x Ideogram4Generator
@@ -113,19 +151,38 @@ jobs:
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            内置 Ideogram 4 NF4 权重缓存和 CUDA 版 PyTorch。
+            此 Release 产物已由 GitHub Actions 下载并内置 ideogram-ai/ideogram-4-nf4 权重缓存。
+            用户不需要手动下载模型。
             需要兼容 CUDA 的 NVIDIA 显卡；不满足条件会显式报错。
           TXT
           tar -czf "${name}.tar.gz" -C dist "${name}"
 
+      - name: Split oversized release assets
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            asset="${{ matrix.package_name }}.zip"
+          else
+            asset="${{ matrix.package_name }}.tar.gz"
+          fi
+          python tools/split_release_asset.py "$asset" --max-size-mib 1900
+
       - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: Ideogram4Generator-${{ matrix.platform }}-GPU
-          path: Ideogram4Generator-${{ matrix.platform }}-GPU-Portable*
+          name: ${{ matrix.package_name }}
+          path: |
+            ${{ matrix.package_name }}.zip
+            ${{ matrix.package_name }}.zip.part*
+            ${{ matrix.package_name }}.zip.sha256
+            ${{ matrix.package_name }}.zip.parts.txt
+            ${{ matrix.package_name }}.tar.gz
+            ${{ matrix.package_name }}.tar.gz.part*
+            ${{ matrix.package_name }}.tar.gz.sha256
+            ${{ matrix.package_name }}.tar.gz.parts.txt
 
   upload-release:
-    needs: [build]
+    needs: [build-gpu-bundle]
     runs-on: ubuntu-22.04
     steps:
       - name: Download artifacts
@@ -142,6 +199,10 @@ jobs:
             echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
           else
             latest=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
+            if [ -z "$latest" ]; then
+              echo "No release tag was provided and no existing release was found."
+              exit 1
+            fi
             echo "tag=${latest}" >> "$GITHUB_OUTPUT"
           fi
         env:
@@ -156,15 +217,18 @@ jobs:
           cat > release-notes.md <<'NOTES'
           ## Ideogram 4 Generator
 
-          ### Portable builds
+          ### Portable GPU CUDA NF4 bundles
 
           | File | Platform | Runtime |
           |------|----------|---------|
-          | `Ideogram4Generator-Windows-GPU-Portable.zip` | Windows 10/11 x64 | CUDA GPU, Ideogram 4 NF4 |
-          | `Ideogram4Generator-Linux-GPU-Portable.tar.gz` | Linux x64 | CUDA GPU, Ideogram 4 NF4 |
+          | `Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.zip` | Windows 10/11 x64 | CUDA GPU, Ideogram 4 NF4 model cache bundled |
+          | `Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.gz` | Linux x64 | CUDA GPU, Ideogram 4 NF4 model cache bundled |
 
-          The release job downloads the gated Ideogram 4 weights with `HF_TOKEN`.
-          If the token is missing or the model license has not been accepted, the job fails explicitly.
+          These release assets are built by GitHub Actions. The workflow downloads `ideogram-ai/ideogram-4-nf4` with the repository `HF_TOKEN` secret and packages the model cache inside the portable build, so end users do not need to download the model manually.
+
+          Large archives are split into `.part001`, `.part002`, ... files when needed. Download every part, concatenate them in numeric order, and verify the `.sha256` file before extracting.
+
+          If `HF_TOKEN` is missing or the Hugging Face model license has not been accepted, the release workflow fails explicitly and no incomplete GPU package is uploaded.
           NOTES
           gh release edit "$tag" --repo "${{ github.repository }}" --title "$tag" --notes-file release-notes.md
         env:
@@ -173,7 +237,11 @@ jobs:
       - name: Upload release assets
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          mapfile -t files < <(find . -maxdepth 1 -name 'Ideogram4Generator-*-GPU-Portable*' -type f | sort)
+          mapfile -t files < <(find . -maxdepth 1 -name 'Ideogram4Generator-*-GPU-CUDA-NF4-Portable*' -type f | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets were produced."
+            exit 1
+          fi
           for file in "${files[@]}"; do
             gh release upload "$tag" "$file" --repo "${{ github.repository }}" --clobber
           done

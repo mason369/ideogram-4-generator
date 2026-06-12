@@ -20,16 +20,16 @@ export const messages = {
     modeDescriptions: {
       local_plain: "不接入官方提示词优化；自然语言按原文送入本地 Ideogram 4 运行时。",
       local_json: "手写 Ideogram 4 JSON caption，直接送入本地模型。",
-      official_magic: "输入 API Key，先调用官方 Magic Prompt，再把 JSON prompt 送入官方生成接口。"
+      official_magic: "输入 API Key，可仅调用官方 Magic Prompt 优化提示词，也可继续把 JSON prompt 送入官方生成接口。"
     },
     apiKey: "Ideogram API Key",
     apiKeyPlaceholder: "仅本次浏览器会话使用，不写入仓库",
     copyrightDetection: "启用官方版权检测",
     width: "宽度",
     height: "高度",
-    dimensionsDescription: "使用 256-2048 px，步进 16 px。",
-    aspectDescription: "画布比例需保持在 1:6 到 6:1 之间。",
-    officialResolutionWarning: "当前尺寸不在官方 v4 API 固定 resolution 列表内；官方提示词优化模式会显式报错。",
+    dimensionsDescription: "本地模式使用 256-2048 px；官方模式使用 v4 固定 resolution。",
+    aspectDescription: "本地比例保持 1:6 到 6:1；官方 9:16 可用 1440x2560。",
+    officialResolutionWarning: "当前尺寸不在官方 v4 API 固定 resolution 列表内；官方提示词优化模式会显式报错。竖版 9:16 可使用 1440x2560。",
     presetsLabel: "画布预设",
     quickSizes: {
       square2k: "方图 2K",
@@ -60,10 +60,12 @@ export const messages = {
     runSummary: "{width}x{height}，{preset}，{count} 张",
     submit: "生成图像",
     processing: "处理中",
+    optimizeOnly: "仅优化提示词",
+    optimizing: "优化中",
     requestPreview: "请求预览",
     resultPreview: "结果",
     optimizedPrompt: "优化后的 JSON Prompt",
-    noResult: "生成后会在这里显示下载后的 PNG。",
+    noResult: "生成后会在这里显示下载后的 PNG；仅优化提示词时会显示官方 JSON Prompt。",
     errorTitle: "生成失败",
     source: "模型卡",
     spotlight: {
@@ -103,16 +105,16 @@ export const messages = {
     modeDescriptions: {
       local_plain: "No official prompt optimization; the natural-language prompt is sent to the local Ideogram 4 runtime verbatim.",
       local_json: "Use a hand-written Ideogram 4 JSON caption directly with the local model.",
-      official_magic: "Enter an API key, call official Magic Prompt first, then generate with the returned JSON prompt."
+      official_magic: "Enter an API key to run official Magic Prompt only, or continue to image generation with the returned JSON prompt."
     },
     apiKey: "Ideogram API Key",
     apiKeyPlaceholder: "Used for this browser session only; never committed",
     copyrightDetection: "Enable official copyright detection",
     width: "Width",
     height: "Height",
-    dimensionsDescription: "Use 256-2048 px in 16 px steps.",
-    aspectDescription: "Canvas aspect ratio must stay between 1:6 and 6:1.",
-    officialResolutionWarning: "This size is not in the official v4 fixed resolution list; official Magic Prompt mode will fail explicitly.",
+    dimensionsDescription: "Local mode uses 256-2048 px; official mode uses fixed v4 resolutions.",
+    aspectDescription: "Local aspect ratio stays between 1:6 and 6:1; official 9:16 can use 1440x2560.",
+    officialResolutionWarning: "This size is not in the official v4 fixed resolution list; official Magic Prompt mode will fail explicitly. Use 1440x2560 for portrait 9:16.",
     presetsLabel: "Canvas Presets",
     quickSizes: {
       square2k: "Square 2K",
@@ -143,10 +145,12 @@ export const messages = {
     runSummary: "{width}x{height}, {preset}, {count} image(s)",
     submit: "Generate Image",
     processing: "Processing",
+    optimizeOnly: "Optimize Prompt Only",
+    optimizing: "Optimizing",
     requestPreview: "Request Preview",
     resultPreview: "Result",
     optimizedPrompt: "Optimized JSON Prompt",
-    noResult: "Downloaded PNG files will appear here after generation.",
+    noResult: "Downloaded PNG files appear here after generation; prompt-only optimization shows the official JSON Prompt.",
     errorTitle: "Generation Failed",
     source: "Model card",
     spotlight: {

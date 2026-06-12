@@ -25,6 +25,15 @@ CANVAS_PRESETS = [
     {"key": "tall1x4", "width": 512, "height": 2048},
 ]
 
+OFFICIAL_CANVAS_PRESETS = [
+    {"key": "square2k", "width": 2048, "height": 2048},
+    {"key": "portrait9x16", "width": 1440, "height": 2560},
+    {"key": "landscape16x9", "width": 2560, "height": 1440},
+    {"key": "poster2x3", "width": 1600, "height": 2560},
+    {"key": "wide4x1", "width": 2880, "height": 1440},
+    {"key": "tall1x4", "width": 1440, "height": 2880},
+]
+
 OFFICIAL_V4_RESOLUTIONS = [
     "2048x2048",
     "1440x2880",

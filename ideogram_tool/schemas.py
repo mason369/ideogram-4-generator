@@ -40,9 +40,17 @@ class IdeogramResult(BaseModel):
     message: str
 
 
+class MagicPromptResult(BaseModel):
+    aspect_ratio: str
+    optimized_prompt: dict[str, Any]
+    request: dict[str, Any]
+    message: str
+
+
 class AppConfig(BaseModel):
     defaults: dict[str, Any]
     canvas_presets: list[dict[str, Any]]
+    official_canvas_presets: list[dict[str, Any]]
     sampler_presets: list[str]
     candidate_counts: list[int]
     official_resolutions: list[str]

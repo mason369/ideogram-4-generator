@@ -9,7 +9,7 @@
 - **本地 CUDA 开放权重链路**：默认模式，不接入官方 Magic Prompt；自然语言提示词按原文送入本地 Ideogram 4 运行时。
 - **官方提示词优化链路**：输入 Ideogram API Key 后，先调用官方 `/v1/ideogram-v4/magic-prompt`，再将返回的 `json_prompt` 送入官方 `/v1/ideogram-v4/generate`。
 
-> 在线体验入口可按需部署到你自己的服务器；本仓库默认启动本地 Web 界面 `http://127.0.0.1:7860`。
+> 在线体验：已接入官方提示词优化链路的 TelkNet Ideogram 4 页面在 [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4)。本仓库是对应的开源本地版，启动后访问 `http://127.0.0.1:7860`。
 
 ## 截图
 
@@ -24,9 +24,10 @@
 - **Seed 控件**：前端提供 `SEED（可选）` 输入框和骰子按钮；`0` 表示运行时随机，点击骰子生成固定 seed。
 - **本地开放权重模式**：通过官方 `ideogram-oss/ideogram4` 推理包调用 `ideogram-ai/ideogram-4-nf4` 或 `fp8` 权重。
 - **官方 API 模式**：封装 API Key、Magic Prompt、Generate v4 和图片下载，生成后的临时 URL 会被下载到本地 `runtime/outputs/`。
-- **严格参数校验**：尺寸范围 `256-2048`，步进 `16`，最大宽高比 `6:1`；候选图 `1-4`；seed 范围 `0-2147483647`。
+- **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发 Generate 出图；生成图片按钮才会继续调用收费的出图接口。
+- **严格参数校验**：本地模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；官方模式严格使用 Ideogram v4 固定 `resolution`，支持 `1440x2560` 等官方枚举；候选图 `1-4`；seed 范围 `0-2147483647`。
 - **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、尺寸不在官方 v4 固定 resolution 列表、CUDA 不可用或权重未授权时都会显式失败。
-- **GitHub Actions 发布**：支持 Windows / Linux GPU 便携包，release workflow 会下载并打包 Ideogram 4 NF4 权重缓存。
+- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，release workflow 会自动下载并打包 Ideogram 4 NF4 权重缓存，最终用户不需要手动下载模型。
 
 ## 调用链路说明
 
@@ -38,34 +39,87 @@
 
 本地模式和 TelkNet 原工具一致保留任意 `256-2048`、16 步进画布；官方 v4 API 当前只接受固定 `resolution` 枚举，所以官方模式会严格检查尺寸，不会自动改成“最接近”的尺寸。
 
-## 快速开始
+官方模式包含两个动作：
 
-### 方式 1：官方 API 模式（无需本地 GPU）
+- `仅优化提示词`：只调用 `/v1/ideogram-v4/magic-prompt`，返回结构化 JSON Prompt，不生成图片。
+- `生成图像`：先调用 Magic Prompt，再调用 `/v1/ideogram-v4/generate` 出图并下载 PNG。Ideogram API Pricing 当前按输出图片计费；Magic Prompt 没有在公开价格表中列出单独费用，但仍需要 Active API Key。
+
+## 源码拉取与运行
+
+### 1. 拉取源代码
 
 ```bash
 git clone https://github.com/mason369/ideogram-4-generator.git
 cd ideogram-4-generator
+```
 
+### 2. 创建虚拟环境并安装 Python 依赖
+
+Windows：
+
+```powershell
 python -m venv venv310
-venv310\Scripts\python -m pip install -r requirements.txt  # Windows
-# source venv310/bin/activate && pip install -r requirements.txt  # Linux
+venv310\Scripts\python -m pip install --upgrade pip setuptools wheel
+venv310\Scripts\python -m pip install -r requirements.txt
+```
 
+Linux / WSL：
+
+```bash
+python -m venv venv310
+source venv310/bin/activate
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
+```
+
+### 3. 安装前端依赖并构建界面
+
+```bash
 npm install
 npm run build
+```
+
+### 4. 运行官方 API 模式（无需本地 GPU）
+
+Windows：
+
+```powershell
 venv310\Scripts\python run.py
 ```
 
-打开 `http://127.0.0.1:7860`，选择 **官方提示词优化**，输入 Ideogram API Key 后生成。
-
-### 方式 2：本地 CUDA 开放权重模式
-
-先安装官方运行时并接受 Hugging Face 权重许可：
+Linux / WSL：
 
 ```bash
+source venv310/bin/activate
+python run.py
+```
+
+打开 `http://127.0.0.1:7860`，选择 **官方提示词优化**。可以在界面输入 Ideogram API Key，也可以设置环境变量 `IDEOGRAM_API_KEY`。
+
+### 5. 源码方式运行本地 CUDA 开放权重模式
+
+源码运行时需要开发者本机具备 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可：
+
+Windows PowerShell：
+
+```powershell
+$env:HF_TOKEN="你的 Hugging Face Token"
+venv310\Scripts\python install.py --no-run
+venv310\Scripts\python tools\download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 --cache-dir models/hf-cache
+venv310\Scripts\python run.py
+```
+
+Linux / WSL：
+
+```bash
+export HF_TOKEN="你的 Hugging Face Token"
+source venv310/bin/activate
 python install.py --no-run
 python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 --cache-dir models/hf-cache
 python run.py
 ```
+
+> 注意：上面是“源码运行”的模型下载步骤。Release 便携包由 GitHub Actions 自动下载并内置模型缓存，最终用户下载 Release 后不需要再手动执行这一步。
 
 必需条件：
 
@@ -73,6 +127,17 @@ python run.py
 - 环境变量 `HF_TOKEN` 已设置。
 - NVIDIA CUDA GPU；`nf4` 是 CUDA 路径。
 - 已安装 `git+https://github.com/ideogram-oss/ideogram4.git`。
+
+### 6. 开发测试命令
+
+```bash
+npm run typecheck
+npm run build
+
+python -m pip install -r requirements-dev.txt
+pytest -q
+python run.py --self-test
+```
 
 ### 常用环境变量
 
@@ -133,15 +198,19 @@ Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，官�
 
 | Workflow | 用途 |
 |----------|------|
-| `.github/workflows/build.yml` | 安装依赖、构建前端、运行 pytest、自检服务 |
-| `.github/workflows/release.yml` | 构建 Windows / Linux GPU 便携包并上传 Release |
+| `.github/workflows/build.yml` | 在 Windows 与 Ubuntu 上安装依赖、构建前端、运行 pytest、自检服务 |
+| `.github/workflows/release.yml` | 构建 Windows / Linux GPU CUDA NF4 便携包并上传 Release |
 
 Release 打包规则：
 
-- Windows：`Ideogram4Generator-Windows-GPU-Portable.zip`
-- Linux：`Ideogram4Generator-Linux-GPU-Portable.tar.gz`
-- 打包时必须设置仓库 secret `HF_TOKEN`，否则下载权重步骤会失败。
-- 便携包会包含前端静态资源、Python 服务、官方运行时依赖和 Hugging Face 权重缓存。
+- Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.zip`
+- Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.gz`
+- 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可。
+- Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
+- `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
+- 便携包会包含前端静态资源、Python 服务、官方运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。
+- 如果完整包超过 GitHub Release 单文件上传限制，workflow 会自动生成 `.part001` / `.part002` 分卷和 `.sha256` 校验文件；下载所有分卷后按顺序合并即可得到原始压缩包。
+- 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。
 
 ## 开发命令
 

@@ -16,6 +16,7 @@ export interface FormState {
 export interface AppConfig {
   defaults: Omit<FormState, "api_key" | "enable_copyright_detection">;
   canvas_presets: Array<{ key: string; width: number; height: number }>;
+  official_canvas_presets: Array<{ key: string; width: number; height: number }>;
   sampler_presets: SamplerPreset[];
   candidate_counts: number[];
   official_resolutions: string[];
@@ -34,5 +35,12 @@ export interface IdeogramResult {
   images: GeneratedImage[];
   request: Record<string, unknown>;
   optimized_prompt?: unknown;
+  message: string;
+}
+
+export interface MagicPromptResult {
+  aspect_ratio: string;
+  optimized_prompt: unknown;
+  request: Record<string, unknown>;
   message: string;
 }

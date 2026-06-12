@@ -12,9 +12,9 @@ import {
   WandSparkles
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { generateImage, loadConfig } from "./api";
+import { generateImage, loadConfig, optimizePrompt } from "./api";
 import { messages, translate, type Locale } from "./i18n";
-import type { AppConfig, ExecutionMode, FormState, IdeogramResult, SamplerPreset } from "./types";
+import type { AppConfig, ExecutionMode, FormState, IdeogramResult, MagicPromptResult, SamplerPreset } from "./types";
 
 const SAMPLE_IMAGES = [
   "/tool-assets/ideogram/ideogram-sample-poster.jpg",
@@ -146,8 +146,10 @@ export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [result, setResult] = useState<IdeogramResult | null>(null);
+  const [magicPromptResult, setMagicPromptResult] = useState<MagicPromptResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const t = (key: string, values?: Record<string, string | number>) => translate(locale, key, values);
 
   useEffect(() => {
@@ -164,6 +166,14 @@ export default function App() {
   }, []);
 
   const officialResolutionSupported = config?.official_resolutions.includes(`${form.width}x${form.height}`) ?? false;
+  const localCanvasPresets = config?.canvas_presets || [];
+  const officialCanvasPresets = config?.official_canvas_presets || [];
+  const activeCanvasPresets = form.execution_mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
+  const officialDimensionMax = Math.max(
+    2048,
+    ...(config?.official_resolutions || []).flatMap((resolution) => resolution.split("x").map((value) => Number.parseInt(value, 10)))
+  );
+  const dimensionMax = form.execution_mode === "official_magic" ? officialDimensionMax : 2048;
   const canSubmit = form.prompt.trim().length > 0 && !loading;
 
   const preview = useMemo(() => {
@@ -185,10 +195,25 @@ export default function App() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function switchMode(mode: ExecutionMode) {
+    setForm((prev) => {
+      const sourcePresets = prev.execution_mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
+      const targetPresets = mode === "official_magic" ? officialCanvasPresets : localCanvasPresets;
+      const currentPresetKey = sourcePresets.find((preset) => preset.width === prev.width && preset.height === prev.height)?.key;
+      const mappedPreset = currentPresetKey ? targetPresets.find((preset) => preset.key === currentPresetKey) : null;
+      return {
+        ...prev,
+        execution_mode: mode,
+        ...(mappedPreset ? { width: mappedPreset.width, height: mappedPreset.height } : {})
+      };
+    });
+  }
+
   async function submit() {
     setLoading(true);
     setError("");
     setResult(null);
+    setMagicPromptResult(null);
     try {
       const data = await generateImage(form);
       setResult(data);
@@ -196,6 +221,21 @@ export default function App() {
       setError(exc instanceof Error ? exc.message : String(exc));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function optimizeOnly() {
+    setOptimizing(true);
+    setError("");
+    setResult(null);
+    setMagicPromptResult(null);
+    try {
+      const data = await optimizePrompt(form);
+      setMagicPromptResult(data);
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : String(exc));
+    } finally {
+      setOptimizing(false);
     }
   }
 
@@ -252,19 +292,19 @@ export default function App() {
                 selected={form.execution_mode === "local_plain"}
                 label={t("modes.local_plain")}
                 icon={<Cpu size={16} />}
-                onClick={() => update("execution_mode", "local_plain")}
+                onClick={() => switchMode("local_plain")}
               />
               <Segment
                 selected={form.execution_mode === "local_json"}
                 label={t("modes.local_json")}
                 icon={<Server size={16} />}
-                onClick={() => update("execution_mode", "local_json")}
+                onClick={() => switchMode("local_json")}
               />
               <Segment
                 selected={form.execution_mode === "official_magic"}
                 label={t("modes.official_magic")}
                 icon={<WandSparkles size={16} />}
-                onClick={() => update("execution_mode", "official_magic")}
+                onClick={() => switchMode("official_magic")}
               />
             </div>
           </div>
@@ -317,7 +357,7 @@ export default function App() {
                 <input
                   type="number"
                   min={256}
-                  max={2048}
+                  max={dimensionMax}
                   step={16}
                   value={form.width}
                   onChange={(event) => update("width", Number.parseInt(event.target.value || "0", 10))}
@@ -328,7 +368,7 @@ export default function App() {
                 <input
                   type="number"
                   min={256}
-                  max={2048}
+                  max={dimensionMax}
                   step={16}
                   value={form.height}
                   onChange={(event) => update("height", Number.parseInt(event.target.value || "0", 10))}
@@ -341,7 +381,7 @@ export default function App() {
             <div className="preset-row">
               <FieldLabel label={t("presetsLabel")} />
               <div>
-                {(config?.canvas_presets || []).map((preset) => (
+                {activeCanvasPresets.map((preset) => (
                   <button
                     type="button"
                     key={preset.key}
@@ -414,10 +454,18 @@ export default function App() {
           </div>
         </section>
 
-        <button className="submit-button" type="button" disabled={!canSubmit} onClick={submit}>
-          {loading ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
-          {loading ? t("processing") : t("submit")}
-        </button>
+        <div className="action-row">
+          {form.execution_mode === "official_magic" ? (
+            <button className="secondary-button" type="button" disabled={!canSubmit || optimizing} onClick={optimizeOnly}>
+              {optimizing ? <Loader2 className="spin" size={18} /> : <WandSparkles size={18} />}
+              {optimizing ? t("optimizing") : t("optimizeOnly")}
+            </button>
+          ) : null}
+          <button className="submit-button" type="button" disabled={!canSubmit || optimizing} onClick={submit}>
+            {loading ? <Loader2 className="spin" size={18} /> : <Send size={18} />}
+            {loading ? t("processing") : t("submit")}
+          </button>
+        </div>
 
         {error ? (
           <section className="error-panel">
@@ -433,7 +481,14 @@ export default function App() {
           </div>
           <div className="panel output-panel">
             <h3>{t("resultPreview")}</h3>
-            {result ? (
+            {magicPromptResult ? (
+              <>
+                <h4>{t("optimizedPrompt")}</h4>
+                <pre>{JSON.stringify(magicPromptResult.optimized_prompt, null, 2)}</pre>
+                <h4>{t("requestPreview")}</h4>
+                <pre>{JSON.stringify(magicPromptResult.request, null, 2)}</pre>
+              </>
+            ) : result ? (
               <>
                 <div className="image-grid">
                   {result.images.map((image) => (

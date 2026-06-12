@@ -1,10 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import importlib.util
+import os
 
 from PyInstaller.utils.hooks import collect_all
 
 ROOT = Path(SPECPATH)
+STRICT_BUNDLE = os.environ.get("IDEOGRAM_STRICT_BUNDLE") == "1"
 
 
 def collect_tree(source: Path, dest: str):
@@ -33,9 +36,15 @@ hiddenimports = [
 ]
 
 def collect_optional(package: str):
+    if importlib.util.find_spec(package) is None:
+        if STRICT_BUNDLE:
+            raise RuntimeError(f"required package is missing for strict bundle: {package}")
+        return [], [], []
     try:
         package_datas, package_bins, package_hidden = collect_all(package)
-    except Exception:
+    except Exception as exc:
+        if STRICT_BUNDLE:
+            raise RuntimeError(f"could not collect required package for strict bundle: {package}") from exc
         return [], [], []
     return package_datas, package_bins, package_hidden
 

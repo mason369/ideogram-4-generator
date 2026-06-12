@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from .schemas import GeneratedImage, IdeogramRequest, IdeogramResult
+from .schemas import GeneratedImage, IdeogramRequest, IdeogramResult, MagicPromptResult
 from .validators import (
     SAMPLER_TO_RENDERING_SPEED,
     aspect_ratio_for_size,
@@ -75,6 +75,22 @@ def _magic_prompt(api_key: str, params: IdeogramRequest) -> dict[str, Any]:
     return data
 
 
+def optimize_prompt_with_official_magic(params: IdeogramRequest) -> MagicPromptResult:
+    api_key = _api_key_from_request(params.api_key)
+    magic = _magic_prompt(api_key, params)
+    return MagicPromptResult(
+        aspect_ratio=str(magic["aspect_ratio"]),
+        optimized_prompt=magic["json_prompt"],
+        request={
+            "endpoint": MAGIC_PROMPT_URL,
+            "prompt_flow": "official_magic_prompt_only",
+            "aspect_ratio": magic["aspect_ratio"],
+            "billing_note": "Magic Prompt is separate from image generation; it still requires an active API key.",
+        },
+        message="official Magic Prompt optimization completed",
+    )
+
+
 def generate_with_official_magic(params: IdeogramRequest, output_dir: Path) -> IdeogramResult:
     api_key = _api_key_from_request(params.api_key)
     resolution = require_official_resolution(params)
@@ -91,10 +107,11 @@ def generate_with_official_magic(params: IdeogramRequest, output_dir: Path) -> I
         }
         if params.enable_copyright_detection is not None:
             form["enable_copyright_detection"] = "true" if params.enable_copyright_detection else "false"
+        multipart = {key: (None, value) for key, value in form.items()}
         response = requests.post(
             GENERATE_URL,
             headers={"Api-Key": api_key},
-            data=form,
+            files=multipart,
             timeout=600,
         )
         _raise_for_bad_response(response, "official Ideogram 4 generation")

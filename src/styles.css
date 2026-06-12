@@ -523,19 +523,39 @@ textarea {
   margin-top: 0;
 }
 
-.submit-button {
-  width: 100%;
+.action-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.submit-button,
+.secondary-button {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 14px;
-  border: 0;
+  border: 1px solid var(--accent);
   border-radius: var(--radius-input);
+  font-weight: 800;
+}
+
+.submit-button {
   background: var(--accent);
   color: white;
-  font-weight: 800;
+}
+
+.secondary-button {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.submit-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .spin {
@@ -622,6 +642,7 @@ pre {
   .spotlight,
   .workspace-grid,
   .result-grid,
+  .action-row,
   .api-row {
     grid-template-columns: 1fr;
   }
