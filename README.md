@@ -66,10 +66,17 @@ venv310\Scripts\python -m pip install -r requirements.txt
 Linux / WSL：
 
 ```bash
-python -m venv venv310
+python3 -m venv venv310
 source venv310/bin/activate
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install -r requirements.txt
+```
+
+如果 Ubuntu / WSL 提示缺少 `venv` 模块，先安装：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y python3.10-venv
 ```
 
 ### 3. 安装前端依赖并构建界面
