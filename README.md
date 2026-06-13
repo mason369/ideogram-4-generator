@@ -219,7 +219,7 @@ Release 打包规则：
 - Release 打包需要在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
-- Release 产物包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；目标机器解压运行时无需再次下载模型。
+- Release 产物包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；解压运行时不再触发模型下载。
 - workflow 会直接生成小于 GitHub Release 单文件上传限制的分卷和 `.sha256` 校验文件。Windows 下载全部 `.7z.00x` 后从 `.7z.001` 解压；Linux 下载全部 `.tar.part*` 后执行 `cat *.tar.part* > package.tar && tar -xf package.tar`。
 - workflow 在 build job 内直接上传分卷到 GitHub Release，不通过 Actions artifact 中转。
 - 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。
