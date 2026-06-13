@@ -27,7 +27,7 @@ Online demo: the TelkNet Ideogram 4 page with the official prompt-optimization f
 - Prompt-only Magic Prompt action that returns JSON Prompt without local generation.
 - Strict parameter validation: all generation modes use 256-2048 px, 16 px step, max 6:1 aspect ratio, supported Magic Prompt aspect buckets, 1-4 candidates, and the documented seed range.
 - No silent fallback: missing keys, missing weights, unsupported Magic Prompt aspect buckets, and CUDA/runtime problems fail explicitly.
-- GitHub Actions for Windows and Linux GPU CUDA NF4 portable releases. Release assets bundle the model cache so end users do not need to download the model manually.
+- GitHub Actions for Windows and Linux GPU CUDA NF4 portable releases. Release artifacts include the model cache; no additional model download is required on the target machine.
 
 ## Source Checkout And Run
 
@@ -91,7 +91,7 @@ This action calls Magic Prompt only and does not generate an image. Clicking **G
 
 ### 5. Run local CUDA generation from source
 
-Source runs require a CUDA environment and a Hugging Face token that has accepted the `ideogram-ai/ideogram-4-nf4` license. The model is gated: anonymous access can read public model-card files, but weight and configuration downloads require an authenticated account with license access.
+Source-based local CUDA generation requires a CUDA environment and a Hugging Face token with accepted `ideogram-ai/ideogram-4-nf4` license access. This is a gated model repository: anonymous access is limited to public model-card files, while weight and configuration downloads require authenticated license access.
 
 Windows PowerShell:
 
@@ -112,7 +112,7 @@ python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 -
 python run.py
 ```
 
-The manual model download above is only for source-based development. GitHub Release bundles download and package the model cache in Actions, so release users do not need this step.
+This manual model-download step applies only to source-based development. Release artifacts are built with an embedded model cache; no model-download step is required on the target machine.
 
 Hardware notes:
 
@@ -170,7 +170,7 @@ Official mode has two actions:
 - `Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
 - `Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
 
-The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license because model weights and configuration files cannot be downloaded anonymously. The token is only injected into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. Release packaging writes split archives and `.sha256` checksum files directly. Download every part for the target platform; on Windows, extract from `.7z.001`; on Linux, combine `.tar.part*` files before extracting the tar archive. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
+The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license because model weights and configuration files cannot be downloaded anonymously. The token is injected only into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. Release packaging writes split archives and `.sha256` checksum files directly. All parts for the target platform are required; Windows extracts from `.7z.001`, and Linux combines `.tar.part*` files before extracting the tar archive. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
 
 ## License
 

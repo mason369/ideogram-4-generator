@@ -289,11 +289,11 @@ jobs:
 
           ### 说明
           - 无需安装 Python，解压即用
-          - AI 模型已内置，无需额外下载 \`ideogram-ai/ideogram-4-nf4\`
+          - Release 产物已内置 \`ideogram-ai/ideogram-4-nf4\` 模型缓存，目标机器无需再次下载模型
           - GPU 版内含 CUDA 12.8 PyTorch 运行时
           - 官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成
           - 没有 NVIDIA 显卡，或当前显卡与内置 PyTorch/CUDA 不兼容时会显式报错；发布流程不生成 CPU 版
-          - \`ideogram-ai/ideogram-4-nf4\` 的权重和配置文件不能匿名下载；\`HF_TOKEN\` 只作为 GitHub Actions secret 注入模型下载与缓存清理步骤，不会写入仓库、README、Release Notes 或打包产物
+          - \`ideogram-ai/ideogram-4-nf4\` 为 gated 模型仓库，权重和配置文件不能匿名下载；\`HF_TOKEN\` 只作为 GitHub Actions secret 注入模型下载与缓存清理步骤，不会写入仓库、README、Release Notes 或打包产物
 
           ### 系统要求
           - **Windows**：Windows 10/11 (x64)

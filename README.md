@@ -27,7 +27,7 @@
 - **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发本地出图；生成图片按钮会继续使用本地 CUDA。
 - **严格参数校验**：所有生成模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；Magic Prompt 需要支持的比例桶；候选图 `1-4`；seed 范围 `0-2147483647`。
 - **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、Magic Prompt 比例不支持、CUDA 不可用或权重未授权时都会显式失败。
-- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，release workflow 会自动下载并打包 Ideogram 4 NF4 权重缓存，最终用户不需要手动下载模型。
+- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，Release 产物内置 Ideogram 4 NF4 权重缓存，目标机器无需再次下载模型。
 
 ## 调用链路说明
 
@@ -107,7 +107,7 @@ python run.py
 
 ### 5. 源码方式运行本地 CUDA 生成模式
 
-源码运行时需要 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。该模型为 gated 仓库，匿名访问只能读取模型卡等公开说明文件，权重和配置文件下载需要登录并完成许可授权。
+源码运行本地 CUDA 生成需要 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。该模型为 gated 仓库；匿名访问仅限模型卡等公开说明文件，权重和配置文件下载需要登录认证并完成许可授权。
 
 Windows PowerShell：
 
@@ -128,7 +128,7 @@ python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 -
 python run.py
 ```
 
-> 注意：上面是“源码运行”的模型下载步骤。Release 便携包由 GitHub Actions 自动下载并内置模型缓存，最终用户下载 Release 后不需要再手动执行这一步。
+> 注意：该步骤仅适用于源码运行。Release 便携包由 GitHub Actions 在发布阶段下载并内置模型缓存，目标机器无需再次执行模型下载。
 
 必需条件：
 
@@ -216,10 +216,10 @@ Release 打包规则：
 
 - Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
 - Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
-- 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
+- Release 打包需要在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
-- 便携包会包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。
+- Release 产物包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；目标机器解压运行时无需再次下载模型。
 - workflow 会直接生成小于 GitHub Release 单文件上传限制的分卷和 `.sha256` 校验文件。Windows 下载全部 `.7z.00x` 后从 `.7z.001` 解压；Linux 下载全部 `.tar.part*` 后执行 `cat *.tar.part* > package.tar && tar -xf package.tar`。
 - 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。
 
