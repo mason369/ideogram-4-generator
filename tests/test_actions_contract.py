@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     assert "HF_TOKEN" in workflow
+    assert "max-parallel: 1" in workflow
     assert "Verify model download token is configured" in workflow
     assert "download_ideogram_weights.py" in workflow
     assert "sanitize_hf_cache.py" in workflow
@@ -33,6 +34,8 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "split_release_asset.py" not in workflow
     downloader = (ROOT / "tools" / "download_ideogram_weights.py").read_text(encoding="utf-8")
     assert "max_workers=2" in downloader
+    assert "--retries" in downloader
+    assert "429" in downloader
 
 
 def test_build_workflow_runs_tests_and_frontend_build() -> None:
