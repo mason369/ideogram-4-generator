@@ -35,7 +35,8 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "sha256sum" in workflow
     assert "Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable" in workflow
     assert "Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable" in workflow
-    assert "Release 产物已内置" in workflow
+    assert "Release 产物包含" in workflow
+    assert "运行时不再触发模型下载" in workflow
     assert "官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成" in workflow
     assert "split_release_asset.py" not in workflow
     downloader = (ROOT / "tools" / "download_ideogram_weights.py").read_text(encoding="utf-8")

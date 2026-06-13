@@ -27,7 +27,7 @@
 - **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发本地出图；生成图片按钮会继续使用本地 CUDA。
 - **严格参数校验**：所有生成模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；Magic Prompt 需要支持的比例桶；候选图 `1-4`；seed 范围 `0-2147483647`。
 - **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、Magic Prompt 比例不支持、CUDA 不可用或权重未授权时都会显式失败。
-- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，Release 产物内置 Ideogram 4 NF4 权重缓存，目标机器无需再次下载模型。
+- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，Release 产物包含 Ideogram 4 NF4 权重缓存，运行时不再触发模型下载。
 
 ## 调用链路说明
 
@@ -128,7 +128,7 @@ python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 -
 python run.py
 ```
 
-> 注意：该步骤仅适用于源码运行。Release 便携包由 GitHub Actions 在发布阶段下载并内置模型缓存，目标机器无需再次执行模型下载。
+> 注意：该步骤仅适用于源码运行。Release 便携包由 GitHub Actions 在发布阶段下载并内置模型缓存，运行时不再触发模型下载。
 
 必需条件：
 

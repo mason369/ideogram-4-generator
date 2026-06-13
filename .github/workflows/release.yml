@@ -73,7 +73,7 @@ jobs:
 
           ### 说明
           - 无需安装 Python，解压即用
-          - Release 产物已内置 \`ideogram-ai/ideogram-4-nf4\` 模型缓存，目标机器无需再次下载模型
+          - Release 产物包含 \`ideogram-ai/ideogram-4-nf4\` 模型缓存，运行时不再触发模型下载
           - GPU 版内含 CUDA 12.8 PyTorch 运行时
           - 官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成
           - 没有 NVIDIA 显卡，或当前显卡与内置 PyTorch/CUDA 不兼容时会显式报错；发布流程不生成 CPU 版
@@ -238,7 +238,7 @@ jobs:
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            Release 产物已内置 ideogram-ai/ideogram-4-nf4 模型缓存，目标机器无需再次下载模型
+            Release 产物包含 ideogram-ai/ideogram-4-nf4 模型缓存，运行时不再触发模型下载
             无需安装 Python，解压即用
             内置 CUDA 12.8 PyTorch 运行时
             需要与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
@@ -256,7 +256,7 @@ jobs:
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            Release 产物已内置 ideogram-ai/ideogram-4-nf4 模型缓存，目标机器无需再次下载模型
+            Release 产物包含 ideogram-ai/ideogram-4-nf4 模型缓存，运行时不再触发模型下载
             无需安装 Python，解压即用
             内置 CUDA 12.8 PyTorch 运行时
             需要与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
