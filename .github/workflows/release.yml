@@ -15,7 +15,85 @@ permissions:
   contents: write
 
 jobs:
+  prepare-release:
+    name: Prepare GitHub Release
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+
+    steps:
+      - name: Determine target tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            latest=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
+            if [ -z "$latest" ]; then
+              echo "No release tag was provided and no existing release was found."
+              exit 1
+            fi
+            echo "tag=${latest}" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release if missing
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          if ! gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release create "${TAG}" \
+              --repo "${{ github.repository }}" \
+              --title "${TAG}" \
+              --notes "正在准备发布说明..."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release notes
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          cat > release-notes.md << NOTES
+          ## Ideogram 4 Generator ${TAG}
+
+          ### 便携版下载
+
+          | 文件 | 平台 | 推理方式 | 说明 |
+          |------|------|----------|------|
+          | \`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.*\` | Windows 10/11 x64 | GPU (CUDA 12.8, NF4) | 有 NVIDIA 显卡推荐 |
+          | \`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.*\` | Linux x64 | GPU (CUDA 12.8, NF4) | 有 NVIDIA 显卡推荐 |
+
+          ### 使用方法
+          1. 下载对应平台的 GPU 压缩包
+          2. Windows 请下载同名前缀的全部 \`.7z.00x\` 分卷，并从 \`.7z.001\` 解压
+          3. Linux 请下载同名前缀的全部 \`.tar.part*\` 分卷，执行 \`cat Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.part* > Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar && tar -xf Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar\`
+          4. 运行 \`Ideogram4Generator\`（Windows 为 \`.exe\`）即可使用
+
+          ### 说明
+          - 无需安装 Python，解压即用
+          - Release 产物已内置 \`ideogram-ai/ideogram-4-nf4\` 模型缓存，目标机器无需再次下载模型
+          - GPU 版内含 CUDA 12.8 PyTorch 运行时
+          - 官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成
+          - 没有 NVIDIA 显卡，或当前显卡与内置 PyTorch/CUDA 不兼容时会显式报错；发布流程不生成 CPU 版
+          - \`ideogram-ai/ideogram-4-nf4\` 为 gated 模型仓库，权重和配置文件不能匿名下载；\`HF_TOKEN\` 只作为 GitHub Actions secret 注入模型下载与缓存清理步骤，不会写入仓库、README、Release Notes 或打包产物
+
+          ### 系统要求
+          - **Windows**：Windows 10/11 (x64)
+          - **Linux**：Ubuntu 20.04+ / Debian 11+ (x64)
+          - **GPU 版**：与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
+          - **显存/内存**：建议 16GB 显存与 16GB+ 内存
+          NOTES
+          gh release edit "${TAG}" \
+            --repo "${{ github.repository }}" \
+            --title "${TAG}" \
+            --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
+    needs: [prepare-release]
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -160,7 +238,7 @@ jobs:
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            AI 模型已内置，无需额外下载
+            Release 产物已内置 ideogram-ai/ideogram-4-nf4 模型缓存，目标机器无需再次下载模型
             无需安装 Python，解压即用
             内置 CUDA 12.8 PyTorch 运行时
             需要与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
@@ -178,7 +256,7 @@ jobs:
             浏览器访问 http://127.0.0.1:7860
 
           说明：
-            AI 模型已内置，无需额外下载
+            Release 产物已内置 ideogram-ai/ideogram-4-nf4 模型缓存，目标机器无需再次下载模型
             无需安装 Python，解压即用
             内置 CUDA 12.8 PyTorch 运行时
             需要与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
@@ -218,101 +296,12 @@ jobs:
             sha256sum "${PKG}".tar.part* > "${PKG}.sha256"
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: Ideogram4Generator-${{ matrix.platform }}-${{ matrix.variant }}-CUDA-NF4
-          path: Ideogram4Generator-${{ matrix.platform }}-${{ matrix.variant }}-CUDA-NF4-Portable*
-
-  upload-release:
-    name: Upload to GitHub Release
-    needs: [build]
-    runs-on: ubuntu-22.04
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          merge-multiple: true
-
-      - name: List artifacts
-        run: ls -lh Ideogram4Generator-*
-
-      - name: Determine target tag
-        id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          elif [ -n "${{ github.event.inputs.tag }}" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            latest=$(gh release list --repo "${{ github.repository }}" --limit 1 --json tagName -q '.[0].tagName')
-            if [ -z "$latest" ]; then
-              echo "No release tag was provided and no existing release was found."
-              exit 1
-            fi
-            echo "tag=${latest}" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Create release if missing
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          if ! gh release view "${TAG}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release create "${TAG}" \
-              --repo "${{ github.repository }}" \
-              --title "${TAG}" \
-              --notes "正在准备发布说明..."
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update release notes
-        run: |
-          TAG="${{ steps.tag.outputs.tag }}"
-          cat > release-notes.md << NOTES
-          ## Ideogram 4 Generator ${TAG}
-
-          ### 便携版下载
-
-          | 文件 | 平台 | 推理方式 | 说明 |
-          |------|------|----------|------|
-          | \`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.*\` | Windows 10/11 x64 | GPU (CUDA 12.8, NF4) | 有 NVIDIA 显卡推荐 |
-          | \`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.*\` | Linux x64 | GPU (CUDA 12.8, NF4) | 有 NVIDIA 显卡推荐 |
-
-          ### 使用方法
-          1. 下载对应平台的 GPU 压缩包
-          2. Windows 请下载同名前缀的全部 \`.7z.00x\` 分卷，并从 \`.7z.001\` 解压
-          3. Linux 请下载同名前缀的全部 \`.tar.part*\` 分卷，执行 \`cat Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.part* > Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar && tar -xf Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar\`
-          4. 运行 \`Ideogram4Generator\`（Windows 为 \`.exe\`）即可使用
-
-          ### 说明
-          - 无需安装 Python，解压即用
-          - Release 产物已内置 \`ideogram-ai/ideogram-4-nf4\` 模型缓存，目标机器无需再次下载模型
-          - GPU 版内含 CUDA 12.8 PyTorch 运行时
-          - 官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成
-          - 没有 NVIDIA 显卡，或当前显卡与内置 PyTorch/CUDA 不兼容时会显式报错；发布流程不生成 CPU 版
-          - \`ideogram-ai/ideogram-4-nf4\` 为 gated 模型仓库，权重和配置文件不能匿名下载；\`HF_TOKEN\` 只作为 GitHub Actions secret 注入模型下载与缓存清理步骤，不会写入仓库、README、Release Notes 或打包产物
-
-          ### 系统要求
-          - **Windows**：Windows 10/11 (x64)
-          - **Linux**：Ubuntu 20.04+ / Debian 11+ (x64)
-          - **GPU 版**：与内置 PyTorch/CUDA 兼容的 NVIDIA 显卡
-          - **显存/内存**：建议 16GB 显存与 16GB+ 内存
-          NOTES
-          gh release edit "${TAG}" \
-            --repo "${{ github.repository }}" \
-            --title "${TAG}" \
-            --notes-file release-notes.md
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload assets to release
+        shell: bash
         run: |
-          TAG="${{ steps.tag.outputs.tag }}"
+          TAG="${{ needs.prepare-release.outputs.tag }}"
           echo "上传资源到 Release: ${TAG}"
-          mapfile -t FILES < <(find . -maxdepth 1 -name "Ideogram4Generator-*-Portable*" -type f | sort)
+          mapfile -t FILES < <(find . -maxdepth 1 -name "Ideogram4Generator-${{ matrix.platform }}-${{ matrix.variant }}-CUDA-NF4-Portable*" -type f | sort)
           if [ "${#FILES[@]}" -eq 0 ]; then
             echo "No release assets were produced."
             exit 1

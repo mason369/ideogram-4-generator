@@ -15,12 +15,16 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "sanitize_hf_cache.py" in workflow
     assert "Verify bundled model cache exists" in workflow
     assert "IDEOGRAM_STRICT_BUNDLE" in workflow
+    assert "Prepare GitHub Release" in workflow
+    assert "needs: [prepare-release]" in workflow
     assert "Create portable package" in workflow
     assert "Smoke test portable package" in workflow
     assert "Compress portable package" in workflow
     assert "upload_asset_with_retry" in workflow
     assert "Create release if missing" in workflow
     assert "Upload assets to release" in workflow
+    assert "actions/" + "upload" + "-artifact" not in workflow
+    assert "actions/" + "download" + "-artifact" not in workflow
     assert "Free Linux runner disk space" in workflow
     assert "Clear package caches before model bundling" in workflow
     assert "HF_HUB_DISABLE_XET" in workflow
@@ -31,7 +35,7 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "sha256sum" in workflow
     assert "Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable" in workflow
     assert "Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable" in workflow
-    assert "AI 模型已内置，无需额外下载" in workflow
+    assert "Release 产物已内置" in workflow
     assert "官方接口只用于 Magic Prompt 提示词优化；图片由本地 CUDA 生成" in workflow
     assert "split_release_asset.py" not in workflow
     downloader = (ROOT / "tools" / "download_ideogram_weights.py").read_text(encoding="utf-8")
