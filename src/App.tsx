@@ -124,22 +124,6 @@ function ModelSpotlight({ locale, t }: { locale: Locale; t: (key: string) => str
   );
 }
 
-function creditCost(form: FormState) {
-  const pixels = Math.max(1, form.width * form.height);
-  const anchors = {
-    V4_QUALITY_48: { one: 5, four: 12 },
-    V4_DEFAULT_20: { one: 3, four: 7 },
-    V4_TURBO_12: { one: 2, four: 4 }
-  }[form.sampler_preset];
-  const oneMp = 1024 * 1024;
-  const fourMp = 2048 * 2048;
-  const single =
-    pixels <= oneMp
-      ? Math.max(1, Math.ceil((anchors.one * pixels) / oneMp))
-      : Math.ceil(anchors.one + (anchors.four - anchors.one) * ((Math.min(pixels, fourMp) - oneMp) / (fourMp - oneMp)));
-  return single * form.candidate_count;
-}
-
 export default function App() {
   const [locale, setLocale] = useState<Locale>(() => (localStorage.getItem("locale") as Locale) || "zh_CN");
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -261,7 +245,6 @@ export default function App() {
           </div>
           <div className="badges">
             <Badge variant="accent">{`${form.width}x${form.height} · ${samplerName}`}</Badge>
-            <Badge>{t("creditsBadge", { cost: creditCost(form) })}</Badge>
           </div>
 
           <div className="mode-box">
