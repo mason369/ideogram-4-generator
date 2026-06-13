@@ -25,6 +25,7 @@ def main() -> None:
         cache_dir=str(cache_dir / "hub"),
         token=token,
         local_files_only=False,
+        max_workers=2,
     )
     print(f"Downloaded {args.repo_id} into Hugging Face cache snapshot: {path}")
 

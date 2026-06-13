@@ -54,6 +54,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libgl1 libegl1 libsndfile1 fonts-dejavu-core
 
+      - name: Free Linux runner disk space
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          df -h .
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          if command -v docker >/dev/null 2>&1; then
+            docker system prune -af
+          fi
+          df -h .
+
       - name: Verify model download token is configured
         shell: bash
         env:
@@ -79,9 +91,18 @@ jobs:
           pip install torch --index-url ${{ matrix.pytorch_url }}
           pip install git+https://github.com/ideogram-oss/ideogram4.git
 
+      - name: Clear package caches before model bundling
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python -m pip cache purge
+          rm -rf "$HOME/.cache/pip" "$HOME/.cache/torch"
+          df -h .
+
       - name: Download Ideogram 4 NF4 weights into bundle cache
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_DISABLE_XET: "1"
         run: python tools/download_ideogram_weights.py --repo-id ideogram-ai/ideogram-4-nf4 --cache-dir models/hf-cache
 
       - name: Sanitize Hugging Face cache before packaging
