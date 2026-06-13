@@ -212,13 +212,13 @@ Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，官�
 | `.github/workflows/build.yml` | 在 Windows 与 Ubuntu 上安装依赖、构建前端、运行 pytest、自检服务 |
 | `.github/workflows/release.yml` | 构建 Windows / Linux GPU CUDA NF4 便携包并上传 Release |
 
-Release 打包规则：
+Release 构建规则：
 
 - Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
 - Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
-- Release 打包需要在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
-- Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
-- `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
+- Release 构建阶段需要在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
+- Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 构建便携包。
+- `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；构建前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
 - Release 产物包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；解压运行时不再触发模型下载。
 - workflow 会直接生成小于 GitHub Release 单文件上传限制的分卷和 `.sha256` 校验文件。Windows 下载全部 `.7z.00x` 后从 `.7z.001` 解压；Linux 下载全部 `.tar.part*` 后执行 `cat *.tar.part* > package.tar && tar -xf package.tar`。
 - workflow 在 build job 内直接上传分卷到 GitHub Release，不通过 Actions artifact 中转。
