@@ -214,13 +214,13 @@ Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，官�
 
 Release 打包规则：
 
-- Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.zip`
-- Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.gz`
+- Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
+- Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
 - 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可。
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
 - 便携包会包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。
-- 如果完整包超过 GitHub Release 单文件上传限制，workflow 会自动生成 `.part001` / `.part002` 分卷和 `.sha256` 校验文件；下载所有分卷后按顺序合并即可得到原始压缩包。
+- workflow 会直接生成小于 GitHub Release 单文件上传限制的分卷和 `.sha256` 校验文件。Windows 下载全部 `.7z.00x` 后从 `.7z.001` 解压；Linux 下载全部 `.tar.part*` 后执行 `cat *.tar.part* > package.tar && tar -xf package.tar`。
 - 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。
 
 ## 开发命令

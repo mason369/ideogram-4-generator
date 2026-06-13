@@ -26,7 +26,9 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "HF_HUB_DISABLE_XET" in workflow
     assert "7z a" in workflow
     assert "-v1900m" in workflow
-    assert 'split -b 1900M - "${PKG}.tar.gz.part"' in workflow
+    assert "-mx=0" in workflow
+    assert 'split -b 1900M - "${PKG}.tar.part"' in workflow
+    assert "sha256sum" in workflow
     assert "Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable" in workflow
     assert "Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable" in workflow
     assert "AI 模型已内置，无需额外下载" in workflow

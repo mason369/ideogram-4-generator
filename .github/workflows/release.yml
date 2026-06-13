@@ -202,8 +202,6 @@ jobs:
         run: |
           NAME="Ideogram4Generator-${{ matrix.platform }}-${{ matrix.variant }}-CUDA-NF4"
           PKG="${NAME}-Portable"
-          SEVENZ_LOW_MEM_ARGS=(-t7z -mx=5 -md=64m -mmt=on)
-
           echo "压缩前磁盘空间:"
           df -h .
           rm -rf build
@@ -212,25 +210,12 @@ jobs:
           df -h .
 
           if [ "${{ matrix.platform }}" = "Windows" ]; then
-            7z a -tzip "${PKG}.zip" "${PKG}"
-            FILE_SIZE=$(stat -c%s "${PKG}.zip" 2>/dev/null || wc -c < "${PKG}.zip" | tr -d ' ')
-            if [ "$FILE_SIZE" -gt 1900000000 ]; then
-              rm "${PKG}.zip"
-              7z a "${SEVENZ_LOW_MEM_ARGS[@]}" "${PKG}.7z" "${PKG}"
-              SEVENZ_SIZE=$(stat -c%s "${PKG}.7z" 2>/dev/null || wc -c < "${PKG}.7z" | tr -d ' ')
-              if [ "$SEVENZ_SIZE" -gt 1900000000 ]; then
-                rm "${PKG}.7z"
-                7z a "${SEVENZ_LOW_MEM_ARGS[@]}" -v1900m "${PKG}.7z" "${PKG}"
-              fi
-            fi
-
-            for archive in "${PKG}.zip" "${PKG}.7z" "${PKG}.7z.001"; do
-              if [ -f "$archive" ]; then
-                7z t "$archive"
-              fi
-            done
+            7z a -t7z -mx=0 -mmt=on -v1900m "${PKG}.7z" "${PKG}"
+            7z t "${PKG}.7z.001"
+            sha256sum "${PKG}".7z.* > "${PKG}.sha256"
           else
-            tar -czf - "${PKG}" | split -b 1900M - "${PKG}.tar.gz.part"
+            tar -cf - "${PKG}" | split -b 1900M - "${PKG}.tar.part"
+            sha256sum "${PKG}".tar.part* > "${PKG}.sha256"
           fi
 
       - name: Upload artifact
@@ -298,8 +283,8 @@ jobs:
 
           ### 使用方法
           1. 下载对应平台的 GPU 压缩包
-          2. 如果是分卷压缩，请先下载同名前缀的全部分卷（如 \`.7z.001\` / \`.7z.002\` 或 \`.tar.gz.partaa\` / \`.tar.gz.partab\`）
-          3. 解压到任意目录
+          2. Windows 请下载同名前缀的全部 \`.7z.00x\` 分卷，并从 \`.7z.001\` 解压
+          3. Linux 请下载同名前缀的全部 \`.tar.part*\` 分卷，执行 \`cat Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.part* > Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar && tar -xf Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar\`
           4. 运行 \`Ideogram4Generator\`（Windows 为 \`.exe\`）即可使用
 
           ### 说明
