@@ -5,6 +5,7 @@ import pytest
 from ideogram_tool.validators import (
     CANVAS_PRESETS,
     aspect_ratio_for_size,
+    normalize_json_prompt_order,
     normalize_seed,
     validate_dimensions,
 )
@@ -40,3 +41,31 @@ def test_magic_aspect_bucket_is_strict() -> None:
     assert aspect_ratio_for_size(1152, 2048) == "9x16"
     with pytest.raises(ValueError, match="supported aspect ratio"):
         aspect_ratio_for_size(1360, 2048)
+
+
+def test_json_prompt_order_is_normalized_for_ideogram4_verifier() -> None:
+    prompt = {
+        "compositional_deconstruction": {
+            "elements": [
+                {"desc": "hero", "type": "obj"},
+                {"desc": "caption", "text": "你好", "type": "text"},
+            ],
+            "background": "room",
+        },
+        "style_description": {
+            "color_palette": ["#FFFFFF"],
+            "medium": "photo",
+            "photo": "portrait",
+            "lighting": "soft",
+            "aesthetics": "warm",
+        },
+        "high_level_description": "test",
+    }
+
+    normalized = normalize_json_prompt_order(prompt)
+
+    assert list(normalized) == ["high_level_description", "style_description", "compositional_deconstruction"]
+    assert list(normalized["style_description"]) == ["aesthetics", "lighting", "photo", "medium", "color_palette"]
+    assert list(normalized["compositional_deconstruction"]) == ["background", "elements"]
+    assert list(normalized["compositional_deconstruction"]["elements"][0]) == ["type", "desc"]
+    assert list(normalized["compositional_deconstruction"]["elements"][1]) == ["type", "text", "desc"]

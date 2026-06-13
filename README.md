@@ -135,6 +135,8 @@ python run.py
 - 已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。
 - 环境变量 `HF_TOKEN` 已设置。
 - NVIDIA CUDA GPU；`nf4` 是 CUDA 路径。
+- 系统内存建议至少 `24 GiB`；程序会用 `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` 检查，低于阈值会显式失败，避免 WSL 被 OOM killer 直接杀掉。默认 WSL 约 `16 GiB` 内存不够，需要在 `.wslconfig` 中提高 `memory` 后重启 WSL。
+- 显存建议 `24 GB+` 用于较长 Magic Prompt JSON、9:16/高分辨率和 `V4_QUALITY_48`。本机 `RTX 4070 Ti SUPER 16GB` 实测能完成 Magic Prompt、加载模型并进入本地 CUDA 计算，但用户提供的 9:16 长提示词在 `288x512 + V4_TURBO_12` 下 40 分钟未产出 PNG，显存长时间接近 16GB；因此 16GB 显卡只能视为实验性配置。
 - 已安装 `git+https://github.com/ideogram-oss/ideogram4.git`。
 
 ### 6. 开发测试命令
@@ -157,6 +159,7 @@ python run.py --self-test
 | `IDEOGRAM_QUANTIZATION` | `nf4` 或 `fp8`，默认 `nf4` |
 | `IDEOGRAM_DEVICE` | 默认 `cuda` |
 | `IDEOGRAM_HF_CACHE` | 指向已下载的 Hugging Face cache |
+| `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` | 本地生成前的系统内存下限，默认 `24` |
 | `IDEOGRAM_OUTPUT_DIR` | 输出目录，默认 `runtime/outputs` |
 
 ## 参数参考

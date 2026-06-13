@@ -7,21 +7,44 @@ from pathlib import Path
 from typing import Any
 
 from .schemas import GeneratedImage, IdeogramRequest, IdeogramResult
-from .validators import normalize_seed, parse_json_prompt
+from .validators import normalize_json_prompt_order, normalize_seed, parse_json_prompt
 
 
 class LocalRuntimeError(RuntimeError):
     pass
 
 
+HF_CACHE_ENV_KEYS = (
+    "HF_HOME",
+    "HF_HUB_CACHE",
+    "HUGGINGFACE_HUB_CACHE",
+    "HF_HUB_OFFLINE",
+    "TRANSFORMERS_OFFLINE",
+)
+
+
 def _hf_cache_env() -> dict[str, str]:
-    env = os.environ.copy()
     configured = os.environ.get("IDEOGRAM_HF_CACHE")
     bundled = Path(__file__).resolve().parent.parent / "models" / "hf-cache"
     cache_dir = Path(configured).expanduser() if configured else bundled
-    if cache_dir.exists():
-        env["HF_HOME"] = str(cache_dir)
-        env["HF_HUB_CACHE"] = str(cache_dir / "hub")
+    if not cache_dir.exists():
+        raise LocalRuntimeError(
+            f"local Ideogram 4 model cache not found at {cache_dir}. "
+            "Run tools/download_ideogram_weights.py first or use a packaged release."
+        )
+    hub_cache = cache_dir / "hub"
+    if not hub_cache.exists():
+        raise LocalRuntimeError(
+            f"local Ideogram 4 Hugging Face hub cache not found at {hub_cache}. "
+            "Run tools/download_ideogram_weights.py first or use a packaged release."
+        )
+    env = {
+        "HF_HOME": str(cache_dir),
+        "HF_HUB_CACHE": str(hub_cache),
+        "HUGGINGFACE_HUB_CACHE": str(hub_cache),
+        "HF_HUB_OFFLINE": "1",
+        "TRANSFORMERS_OFFLINE": "1",
+    }
     return env
 
 
@@ -42,6 +65,8 @@ def generate_with_local_cuda(
         if optimized_prompt is None:
             optimized_prompt = parse_json_prompt(params.prompt)
             active_prompt_flow = "user_supplied_structured_json_prompt"
+        else:
+            optimized_prompt = normalize_json_prompt_order(optimized_prompt)
         prompt_for_runtime = json.dumps(optimized_prompt, ensure_ascii=False, separators=(",", ":"))
     if active_prompt_flow is None:
         active_prompt_flow = "plain_prompt_without_official_magic_prompt"
@@ -62,8 +87,9 @@ def generate_with_local_cuda(
             "is_structured": is_structured,
         }
         payload_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        previous_env = {key: os.environ.get(key) for key in ("HF_HOME", "HF_HUB_CACHE")}
-        os.environ.update({key: value for key, value in _hf_cache_env().items() if key in {"HF_HOME", "HF_HUB_CACHE"}})
+        cache_env = _hf_cache_env()
+        previous_env = {key: os.environ.get(key) for key in HF_CACHE_ENV_KEYS}
+        os.environ.update(cache_env)
         try:
             runtime_output = run_payload(json.loads(payload_path.read_text(encoding="utf-8")))
         except Exception as exc:

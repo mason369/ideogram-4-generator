@@ -92,4 +92,52 @@ def parse_json_prompt(raw: str) -> dict[str, Any]:
         raise ValueError(
             "local_json mode requires Ideogram 4 fields: high_level_description and compositional_deconstruction"
         )
-    return parsed
+    return normalize_json_prompt_order(parsed)
+
+
+def _ordered_dict(source: dict[str, Any], preferred_order: list[str]) -> dict[str, Any]:
+    ordered: dict[str, Any] = {}
+    for key in preferred_order:
+        if key in source:
+            ordered[key] = source[key]
+    for key, value in source.items():
+        if key not in ordered:
+            ordered[key] = value
+    return ordered
+
+
+def _normalize_style_description(style_description: Any) -> Any:
+    if not isinstance(style_description, dict):
+        return style_description
+    if "photo" in style_description:
+        return _ordered_dict(style_description, ["aesthetics", "lighting", "photo", "medium", "color_palette"])
+    return _ordered_dict(style_description, ["aesthetics", "lighting", "medium", "art_style", "color_palette"])
+
+
+def _normalize_element(element: Any) -> Any:
+    if not isinstance(element, dict):
+        return element
+    if element.get("type") == "text":
+        return _ordered_dict(element, ["type", "bbox", "text", "desc", "color_palette"])
+    return _ordered_dict(element, ["type", "bbox", "desc", "color_palette"])
+
+
+def _normalize_compositional_deconstruction(compositional_deconstruction: Any) -> Any:
+    if not isinstance(compositional_deconstruction, dict):
+        return compositional_deconstruction
+    normalized = dict(compositional_deconstruction)
+    elements = normalized.get("elements")
+    if isinstance(elements, list):
+        normalized["elements"] = [_normalize_element(element) for element in elements]
+    return _ordered_dict(normalized, ["background", "elements"])
+
+
+def normalize_json_prompt_order(prompt: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(prompt)
+    if "style_description" in normalized:
+        normalized["style_description"] = _normalize_style_description(normalized["style_description"])
+    if "compositional_deconstruction" in normalized:
+        normalized["compositional_deconstruction"] = _normalize_compositional_deconstruction(
+            normalized["compositional_deconstruction"]
+        )
+    return _ordered_dict(normalized, ["high_level_description", "style_description", "compositional_deconstruction"])

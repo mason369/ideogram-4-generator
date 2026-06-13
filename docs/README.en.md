@@ -114,6 +114,11 @@ python run.py
 
 The manual model download above is only for source-based development. GitHub Release bundles download and package the model cache in Actions, so release users do not need this step.
 
+Hardware notes:
+
+- System RAM should be at least `24 GiB`. The runtime checks `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` before loading the local model and fails explicitly when the machine is below the threshold, instead of letting WSL get killed by the OOM killer. Default WSL memory around `16 GiB` is not enough; raise `memory` in `.wslconfig` and restart WSL.
+- VRAM of `24 GB+` is recommended for long Magic Prompt JSON, 9:16 or higher resolutions, and `V4_QUALITY_48`. On this test machine, an `RTX 4070 Ti SUPER 16GB` successfully called Magic Prompt, loaded the model, and entered local CUDA generation, but the supplied long 9:16 prompt at `288x512 + V4_TURBO_12` did not produce a PNG within 40 minutes while VRAM stayed near 16GB. Treat 16GB GPUs as experimental for this model.
+
 ### 6. Development checks
 
 ```bash
