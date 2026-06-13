@@ -107,7 +107,7 @@ python run.py
 
 ### 5. 源码方式运行本地 CUDA 生成模式
 
-源码运行时需要开发者本机具备 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可：
+源码运行时需要 CUDA 环境，并已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。该模型为 gated 仓库，匿名访问只能读取模型卡等公开说明文件，权重和配置文件下载需要登录并完成许可授权。
 
 Windows PowerShell：
 
@@ -135,8 +135,8 @@ python run.py
 - 已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。
 - 环境变量 `HF_TOKEN` 已设置。
 - NVIDIA CUDA GPU；`nf4` 是 CUDA 路径。
-- 系统内存建议至少 `24 GiB`；程序会用 `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` 检查，低于阈值会显式失败，避免 WSL 被 OOM killer 直接杀掉。默认 WSL 约 `16 GiB` 内存不够，需要在 `.wslconfig` 中提高 `memory` 后重启 WSL。
-- 显存建议 `24 GB+` 用于较长 Magic Prompt JSON、9:16/高分辨率和 `V4_QUALITY_48`。本机 `RTX 4070 Ti SUPER 16GB` 实测能完成 Magic Prompt、加载模型并进入本地 CUDA 计算，但用户提供的 9:16 长提示词在 `288x512 + V4_TURBO_12` 下 40 分钟未产出 PNG，显存长时间接近 16GB；因此 16GB 显卡只能视为实验性配置。
+- 系统内存建议至少 `24 GiB`；程序会用 `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` 检查，低于阈值会显式失败，避免 WSL 被 OOM killer 直接杀掉。默认 WSL 约 `16 GiB` 内存不足，需要在 `.wslconfig` 中提高 `memory` 后重启 WSL。
+- 显存建议 `24 GB+`，适用于较长 Magic Prompt JSON、9:16/高分辨率和 `V4_QUALITY_48`。`16 GB` 显存可用于低分辨率、短提示词和较快采样预设的探索性测试，不作为推荐配置。
 - 已安装 `git+https://github.com/ideogram-oss/ideogram4.git`。
 
 ### 6. 开发测试命令
@@ -216,7 +216,7 @@ Release 打包规则：
 
 - Windows：`Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
 - Linux：`Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
-- 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可。
+- 发布前维护者必须在 GitHub 仓库设置 secret `HF_TOKEN`，并确保该 token 已接受 `ideogram-ai/ideogram-4-nf4` 模型许可；该模型的权重和配置文件不能匿名下载。
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 打包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；打包前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
 - 便携包会包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；最终用户下载 Release 产物后不需要手动下载模型。

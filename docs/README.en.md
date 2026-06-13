@@ -91,7 +91,7 @@ This action calls Magic Prompt only and does not generate an image. Clicking **G
 
 ### 5. Run local CUDA generation from source
 
-Source runs require a CUDA-capable local machine and a Hugging Face token that has accepted the `ideogram-ai/ideogram-4-nf4` license:
+Source runs require a CUDA environment and a Hugging Face token that has accepted the `ideogram-ai/ideogram-4-nf4` license. The model is gated: anonymous access can read public model-card files, but weight and configuration downloads require an authenticated account with license access.
 
 Windows PowerShell:
 
@@ -116,8 +116,8 @@ The manual model download above is only for source-based development. GitHub Rel
 
 Hardware notes:
 
-- System RAM should be at least `24 GiB`. The runtime checks `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` before loading the local model and fails explicitly when the machine is below the threshold, instead of letting WSL get killed by the OOM killer. Default WSL memory around `16 GiB` is not enough; raise `memory` in `.wslconfig` and restart WSL.
-- VRAM of `24 GB+` is recommended for long Magic Prompt JSON, 9:16 or higher resolutions, and `V4_QUALITY_48`. On this test machine, an `RTX 4070 Ti SUPER 16GB` successfully called Magic Prompt, loaded the model, and entered local CUDA generation, but the supplied long 9:16 prompt at `288x512 + V4_TURBO_12` did not produce a PNG within 40 minutes while VRAM stayed near 16GB. Treat 16GB GPUs as experimental for this model.
+- System RAM should be at least `24 GiB`. The runtime checks `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` before loading the local model and fails explicitly when the machine is below the threshold, instead of letting WSL get killed by the OOM killer. Default WSL memory around `16 GiB` is insufficient; raise `memory` in `.wslconfig` and restart WSL.
+- VRAM of `24 GB+` is recommended for long Magic Prompt JSON, 9:16 or higher resolutions, and `V4_QUALITY_48`. `16 GB` VRAM can be used for exploratory tests with lower resolutions, shorter prompts, and faster sampler presets, but is not the recommended configuration.
 
 ### 6. Development checks
 
@@ -167,10 +167,10 @@ Official mode has two actions:
 
 `.github/workflows/release.yml` builds:
 
-- `Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.zip`
-- `Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.gz`
+- `Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
+- `Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
 
-The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license. The token is only injected into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. If the complete archive is too large for a single GitHub Release asset, the workflow emits `.part001` / `.part002` split files plus a `.sha256` checksum. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
+The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license because model weights and configuration files cannot be downloaded anonymously. The token is only injected into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. Release packaging writes split archives and `.sha256` checksum files directly. Download every part for the target platform; on Windows, extract from `.7z.001`; on Linux, combine `.tar.part*` files before extracting the tar archive. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
 
 ## License
 
