@@ -42,12 +42,15 @@ if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 & npm run build
 if ($LASTEXITCODE -ne 0) { throw "frontend build failed" }
 
-& $Python -m pip install --upgrade pip setuptools wheel
+& $Python -m pip install --upgrade pip wheel "setuptools<81"
 if ($LASTEXITCODE -ne 0) { throw "pip bootstrap failed" }
 & $Python -m pip install -r requirements.txt -r requirements-dev.txt
 if ($LASTEXITCODE -ne 0) { throw "dependency install failed" }
 
 & $Python -m PyInstaller Ideogram4Generator.spec
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller build failed" }
+
+& $Python tools\write_runtime_report.py --package-dir dist\Ideogram4Generator --output dist\Ideogram4Generator\RUNTIME-CUDA-COMPATIBILITY.txt --require-cuda --require-bitsandbytes-cuda
+if ($LASTEXITCODE -ne 0) { throw "runtime compatibility report failed" }
 
 Write-Host "Portable build completed: dist\Ideogram4Generator"

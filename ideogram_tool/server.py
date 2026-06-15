@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 import webbrowser
 from pathlib import Path
@@ -30,6 +31,40 @@ def project_root() -> Path:
 def output_dir() -> Path:
     configured = os.environ.get("IDEOGRAM_OUTPUT_DIR")
     return (project_root() / configured).resolve() if configured else project_root() / "runtime" / "outputs"
+
+
+def run_self_test() -> None:
+    app = create_app()
+    if not app:
+        raise RuntimeError("FastAPI app failed to initialize")
+
+    static_dir = project_root() / "ideogram_tool" / "static"
+    if not (static_dir / "index.html").exists():
+        raise RuntimeError(f"frontend build is missing: {static_dir / 'index.html'}")
+
+    require_model_cache = os.environ.get("IDEOGRAM_REQUIRE_MODEL_CACHE") == "1"
+    runtime_modules: tuple[str, ...] = ()
+    try:
+        from .local_cuda import _hf_cache_env
+
+        cache_env = _hf_cache_env()
+        print(f"model cache: {cache_env['HF_HOME']}")
+        runtime_modules = (
+            "ideogram_tool.local_worker",
+            "torch",
+            "transformers",
+            "huggingface_hub",
+            "ideogram4",
+        )
+    except LocalRuntimeError as exc:
+        if require_model_cache:
+            raise RuntimeError(str(exc)) from exc
+        print(f"model cache check skipped: {exc}")
+
+    for module_name in runtime_modules:
+        module = importlib.import_module(module_name)
+        version = getattr(module, "__version__", "unknown")
+        print(f"import ok: {module_name} {version}")
 
 
 def create_app() -> FastAPI:
@@ -109,9 +144,7 @@ def main() -> None:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        app = create_app()
-        if not app:
-            raise RuntimeError("FastAPI app failed to initialize")
+        run_self_test()
         print("Ideogram 4 Generator self-test passed")
         return
     if not args.no_browser:

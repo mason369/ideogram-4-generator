@@ -3,6 +3,7 @@
 from pathlib import Path
 import importlib.util
 import os
+import site
 
 from PyInstaller.utils.hooks import collect_all
 
@@ -27,6 +28,8 @@ datas = [
 datas += collect_tree(ROOT / "ideogram_tool" / "static", "ideogram_tool/static")
 datas += collect_tree(ROOT / "public", "public")
 datas += collect_tree(ROOT / "models" / "hf-cache", "models/hf-cache")
+for site_dir in site.getsitepackages():
+    datas += collect_tree(Path(site_dir) / "nvidia", "nvidia")
 
 hiddenimports = [
     "uvicorn",

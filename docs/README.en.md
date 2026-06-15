@@ -6,7 +6,7 @@
 
 An open-source standalone version of the TelkNet `Ideogram 4` image-generation tool. It keeps the original parameter surface: `prompt / width / height / sampler_preset / seed / candidate_count`, and exposes two explicit execution paths:
 
-- **Local CUDA open-weight path**: default mode. No official Magic Prompt is used; the natural-language prompt is sent verbatim to the local Ideogram 4 runtime.
+- **Local CUDA open-weight path**: default mode. No official Magic Prompt is used; the complete natural-language prompt is wrapped into local Ideogram 4 JSON before rendering.
 - **Official prompt optimization path**: enter an Ideogram API key and call only `/v1/ideogram-v4/magic-prompt`; the returned `json_prompt` is rendered by the local CUDA Ideogram 4 runtime.
 
 Online demo: the TelkNet Ideogram 4 page with the official prompt-optimization flow is available at [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4). This repository is the open-source local version; after launch, open `http://127.0.0.1:7860`.
@@ -44,6 +44,7 @@ Windows:
 
 ```powershell
 python -m venv venv310
+venv310\Scripts\python -m pip install --upgrade pip wheel "setuptools<81"
 venv310\Scripts\python -m pip install -r requirements.txt
 ```
 
@@ -52,7 +53,7 @@ Linux / WSL:
 ```bash
 python3 -m venv venv310
 source venv310/bin/activate
-python -m pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip wheel "setuptools<81"
 python -m pip install -r requirements.txt
 ```
 
@@ -116,8 +117,8 @@ This manual model-download step applies only to source-based development. Releas
 
 Hardware notes:
 
-- System RAM should be at least `24 GiB`. The runtime checks `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` before loading the local model and fails explicitly when the machine is below the threshold, instead of letting WSL get killed by the OOM killer. Default WSL memory around `16 GiB` is insufficient; raise `memory` in `.wslconfig` and restart WSL.
-- VRAM of `24 GB+` is recommended for long Magic Prompt JSON, 9:16 or higher resolutions, and `V4_QUALITY_48`. `16 GB` VRAM can be used for exploratory tests with lower resolutions, shorter prompts, and faster sampler presets, but is not the recommended configuration.
+- System RAM should be at least `64 GiB`. The runtime checks `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` before loading the local model and fails explicitly when the machine is below the threshold, instead of letting WSL or Windows run into OOM. Default WSL memory around `16 GiB` is insufficient; raise `memory` in `.wslconfig` and restart WSL.
+- VRAM of `24 GB+` is recommended for long Magic Prompt JSON, 9:16 or higher resolutions, and `V4_QUALITY_48`. `16 GB` VRAM is only suitable for low-resolution, short-prompt, fast-preset experiments and is not the recommended configuration.
 
 ### 6. Development checks
 
@@ -134,11 +135,11 @@ python run.py --self-test
 
 | Mode | UI label | Official Magic Prompt | Input | Output |
 |------|----------|-----------------------|-------|--------|
-| `local_plain` | Local plain prompt | No | Natural language | Local PNG |
+| `local_plain` | Local plain prompt | No | Complete natural-language prompt, wrapped into local Ideogram 4 JSON | Local PNG |
 | `local_json` | Local structured JSON | No | Ideogram 4 JSON caption | Local PNG |
 | `official_magic` | Official Magic Prompt | Yes | Natural language + API key | Local PNG with official prompt optimization |
 
-All generation modes use the local 256-2048 px canvas. The official path optimizes the prompt only; it does not request official Ideogram image generation.
+All generation modes use the local 256-2048 px canvas. Local plain mode preserves the complete prompt and wraps it into local JSON. The official path optimizes the prompt only; it does not request official Ideogram image generation.
 
 Official mode has two actions:
 
@@ -170,7 +171,7 @@ Official mode has two actions:
 - `Ideogram4Generator-Windows-GPU-CUDA-NF4-Portable.7z.001` / `.7z.002` ...
 - `Ideogram4Generator-Linux-GPU-CUDA-NF4-Portable.tar.partaa` / `.tar.partab` ...
 
-The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license because model weights and configuration files cannot be downloaded anonymously. The token is injected only into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. Release packaging writes split archives and `.sha256` checksum files directly, then uploads them to GitHub Release from the build job without an Actions-artifact transfer. All parts for the target platform are required; Windows extracts from `.7z.001`, and Linux combines `.tar.part*` files before extracting the tar archive. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
+The workflow requires repository secret `HF_TOKEN`; the token must have accepted the `ideogram-ai/ideogram-4-nf4` model license because model weights and configuration files cannot be downloaded anonymously. The token is injected only into the model-download and cache-scan steps, and is not written to the repository, README, release notes, or release assets. Actions downloads the model into `models/hf-cache`, sanitizes token files, verifies that the cache is non-empty, and packages it into the portable builds. The Release workflow pins the `torch==2.11.0` `cu128` wheel so GPU compatibility does not drift with future PyTorch releases. Each portable package includes `RUNTIME-CUDA-COMPATIBILITY.txt`, which records the packaged PyTorch version, CUDA runtime version, PyTorch `sm_` architecture list, bitsandbytes CUDA libraries, and collected CUDA dynamic libraries. GPU compatibility depends on the bundled PyTorch CUDA wheel, bitsandbytes, and the target machine's NVIDIA driver; the portable package does not include the NVIDIA kernel driver, so the target driver must be compatible with CUDA 12.8. Release packaging writes split archives and `.sha256` checksum files directly, then uploads them to GitHub Release from the build job without an Actions-artifact transfer. All parts for the target platform are required; Windows extracts from `.7z.001`, and Linux combines `.tar.part*` files before extracting the tar archive. If the token is missing, the license is not accepted, CUDA dependencies cannot be collected, or the cache is empty, the workflow fails explicitly and no incomplete GPU package is uploaded.
 
 ## License
 

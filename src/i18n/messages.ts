@@ -17,7 +17,7 @@ export const messages = {
       official_magic: "官方提示词优化"
     },
     modeDescriptions: {
-      local_plain: "不接入官方提示词优化；自然语言按原文送入本地 Ideogram 4 运行时。",
+      local_plain: "不接入官方提示词优化；完整自然语言原文会封装为本地 Ideogram 4 JSON 后生成。",
       local_json: "手写 Ideogram 4 JSON caption，直接送入本地模型。",
       official_magic: "输入 API Key，仅调用官方 Magic Prompt；返回的 JSON prompt 继续交给本地 CUDA 出图。"
     },
@@ -99,7 +99,7 @@ export const messages = {
       official_magic: "Official Magic Prompt"
     },
     modeDescriptions: {
-      local_plain: "No official prompt optimization; the natural-language prompt is sent to the local Ideogram 4 runtime verbatim.",
+      local_plain: "No official prompt optimization; the complete natural-language prompt is wrapped into local Ideogram 4 JSON before rendering.",
       local_json: "Use a hand-written Ideogram 4 JSON caption directly with the local model.",
       official_magic: "Enter an API key to call official Magic Prompt only; the returned JSON prompt is generated locally with CUDA."
     },

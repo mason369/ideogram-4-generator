@@ -18,6 +18,12 @@ def test_release_workflow_requires_hf_token_for_weighted_package() -> None:
     assert "Prepare GitHub Release" in workflow
     assert "needs: [prepare-release]" in workflow
     assert "Create portable package" in workflow
+    assert "write_runtime_report.py" in workflow
+    assert "RUNTIME-CUDA-COMPATIBILITY.txt" in workflow
+    assert 'pytorch_version: "2.11.0"' in workflow
+    assert 'pip install "torch==${{ matrix.pytorch_version }}" --index-url ${{ matrix.pytorch_url }}' in workflow
+    assert "--require-cuda" in workflow
+    assert "--require-bitsandbytes-cuda" in workflow
     assert "Smoke test portable package" in workflow
     assert "Compress portable package" in workflow
     assert "upload_asset_with_retry" in workflow

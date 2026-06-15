@@ -6,7 +6,7 @@
 
 复刻 TelkNet 项目中 `Ideogram 4` 图像生成工具的开源独立版。它保留原工具的参数习惯：`prompt / width / height / sampler_preset / seed / candidate_count`，并提供两条明确链路：
 
-- **本地 CUDA 开放权重链路**：默认模式，不接入官方 Magic Prompt；自然语言提示词按原文送入本地 Ideogram 4 运行时。
+- **本地 CUDA 开放权重链路**：默认模式，不接入官方 Magic Prompt；完整自然语言提示词会封装为本地 Ideogram 4 JSON 后生成。
 - **官方提示词优化链路**：输入 Ideogram API Key 后，只调用官方 `/v1/ideogram-v4/magic-prompt`；返回的 `json_prompt` 会继续交给本地 CUDA Ideogram 4 运行时出图。
 
 > 在线体验：已接入官方提示词优化链路的 TelkNet Ideogram 4 页面在 [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4)。本仓库是对应的开源本地版，启动后访问 `http://127.0.0.1:7860`。
@@ -33,11 +33,11 @@
 
 | 模式 | UI 名称 | 是否接入官方提示词优化 | 输入 | 输出 |
 |------|---------|------------------------|------|------|
-| `local_plain` | 本地原文提示词 | 否 | 自然语言 prompt | 本地 PNG |
+| `local_plain` | 本地原文提示词 | 否 | 完整自然语言 prompt，本地封装为 Ideogram 4 JSON | 本地 PNG |
 | `local_json` | 本地结构化 JSON | 否 | Ideogram 4 JSON caption | 本地 PNG |
 | `official_magic` | 官方提示词优化 | 是 | 自然语言 prompt + API Key | 本地 PNG（提示词由官方优化） |
 
-所有生成模式都使用本地 `256-2048`、16 步进画布；官方链路只负责把自然语言 prompt 优化成 Ideogram 4 JSON Prompt，不负责生成图片。
+所有生成模式都使用本地 `256-2048`、16 步进画布；本地原文模式会保留完整 prompt 并封装为本地 JSON，官方链路只负责把自然语言 prompt 优化成 Ideogram 4 JSON Prompt，不负责生成图片。
 
 官方模式包含两个动作：
 
@@ -59,7 +59,7 @@ Windows：
 
 ```powershell
 python -m venv venv310
-venv310\Scripts\python -m pip install --upgrade pip setuptools wheel
+venv310\Scripts\python -m pip install --upgrade pip wheel "setuptools<81"
 venv310\Scripts\python -m pip install -r requirements.txt
 ```
 
@@ -68,7 +68,7 @@ Linux / WSL：
 ```bash
 python3 -m venv venv310
 source venv310/bin/activate
-python -m pip install --upgrade pip setuptools wheel
+python -m pip install --upgrade pip wheel "setuptools<81"
 python -m pip install -r requirements.txt
 ```
 
@@ -135,8 +135,8 @@ python run.py
 - 已在 Hugging Face 接受 `ideogram-ai/ideogram-4-nf4` 权重许可。
 - 环境变量 `HF_TOKEN` 已设置。
 - NVIDIA CUDA GPU；`nf4` 是 CUDA 路径。
-- 系统内存建议至少 `24 GiB`；程序会用 `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` 检查，低于阈值会显式失败，避免 WSL 被 OOM killer 直接杀掉。默认 WSL 约 `16 GiB` 内存不足，需要在 `.wslconfig` 中提高 `memory` 后重启 WSL。
-- 显存建议 `24 GB+`，适用于较长 Magic Prompt JSON、9:16/高分辨率和 `V4_QUALITY_48`。`16 GB` 显存可用于低分辨率、短提示词和较快采样预设的探索性测试，不作为推荐配置。
+- 系统内存建议至少 `64 GiB`；程序会用 `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` 检查，低于阈值会显式失败，避免 WSL 或 Windows 进入 OOM。默认 WSL 约 `16 GiB` 内存不足，需要在 `.wslconfig` 中提高 `memory` 后重启 WSL。
+- 显存建议 `24 GB+`，适用于较长 Magic Prompt JSON、9:16/高分辨率和 `V4_QUALITY_48`。`16 GB` 显存只适合低分辨率、短提示词和较快采样预设的实验，不作为推荐配置。
 - 已安装 `git+https://github.com/ideogram-oss/ideogram4.git`。
 
 ### 6. 开发测试命令
@@ -150,6 +150,8 @@ pytest -q
 python run.py --self-test
 ```
 
+`python run.py --self-test` 会检查 Web 服务和前端静态文件；检测到本地模型缓存时会继续检查本地出图运行时依赖导入。发布包测试会设置 `IDEOGRAM_REQUIRE_MODEL_CACHE=1`，模型缓存缺失时直接失败。
+
 ### 常用环境变量
 
 | 变量 | 说明 |
@@ -159,7 +161,8 @@ python run.py --self-test
 | `IDEOGRAM_QUANTIZATION` | `nf4` 或 `fp8`，默认 `nf4` |
 | `IDEOGRAM_DEVICE` | 默认 `cuda` |
 | `IDEOGRAM_HF_CACHE` | 指向已下载的 Hugging Face cache |
-| `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` | 本地生成前的系统内存下限，默认 `24` |
+| `IDEOGRAM_REQUIRE_MODEL_CACHE` | 自检时强制要求本地模型缓存存在，发布包测试使用 |
+| `IDEOGRAM_MIN_SYSTEM_MEMORY_GB` | 本地生成前的系统内存下限，默认 `64` |
 | `IDEOGRAM_OUTPUT_DIR` | 输出目录，默认 `runtime/outputs` |
 
 ## 参数参考
@@ -220,6 +223,9 @@ Release 构建规则：
 - Release workflow 会在 Actions runner 中自动下载 `ideogram-ai/ideogram-4-nf4` 到 `models/hf-cache`，校验缓存非空，再用 PyInstaller 构建便携包。
 - `HF_TOKEN` 只作为 GitHub Actions secret 注入下载步骤，不会写入仓库、README、Release Notes 或打包产物；构建前会清理并扫描 Hugging Face cache 中的 token 文件和 token 内容。
 - Release 产物包含前端静态资源、Python 服务、开放权重运行时依赖和 Hugging Face 权重缓存；解压运行时不再触发模型下载。
+- Release 包内包含 `RUNTIME-CUDA-COMPATIBILITY.txt`，记录本次打包的 PyTorch 版本、CUDA 运行时版本、PyTorch wheel 内置的 `sm_` 架构列表、bitsandbytes CUDA 库和已收集的 CUDA 动态库。
+- Release workflow 固定安装 `torch==2.11.0` 的 `cu128` wheel，避免每次发布因 PyTorch 最新版变化导致兼容范围漂移。
+- GPU 兼容范围由包内 PyTorch CUDA wheel、bitsandbytes 库和目标机器 NVIDIA 驱动共同决定；便携包不包含 NVIDIA kernel driver，目标机器驱动仍需兼容 CUDA 12.8。
 - workflow 会直接生成小于 GitHub Release 单文件上传限制的分卷和 `.sha256` 校验文件。Windows 下载全部 `.7z.00x` 后从 `.7z.001` 解压；Linux 下载全部 `.tar.part*` 后执行 `cat *.tar.part* > package.tar && tar -xf package.tar`。
 - workflow 在 build job 内直接上传分卷到 GitHub Release，不通过 Actions artifact 中转。
 - 如果 `HF_TOKEN` 缺失、模型许可未接受、CUDA 依赖未收集成功或模型缓存为空，workflow 会显式失败，不上传不完整 GPU 包。

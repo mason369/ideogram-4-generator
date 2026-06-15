@@ -23,6 +23,30 @@ HF_CACHE_ENV_KEYS = (
 )
 
 
+def natural_language_prompt_to_json(prompt: str) -> dict[str, Any]:
+    return normalize_json_prompt_order(
+        {
+            "high_level_description": prompt,
+            "style_description": {
+                "aesthetics": "Follow the complete natural-language prompt exactly.",
+                "lighting": "Use the lighting described in the prompt.",
+                "medium": "Use the medium and visual style described in the prompt.",
+                "art_style": "Use the art direction described in the prompt.",
+                "color_palette": ["#f8f4ec", "#2f2f3a", "#c7a56f", "#86b7c9"],
+            },
+            "compositional_deconstruction": {
+                "background": "Use the environment, background, props, and UI elements described in the complete prompt.",
+                "elements": [
+                    {
+                        "type": "obj",
+                        "desc": prompt,
+                    }
+                ],
+            },
+        }
+    )
+
+
 def _hf_cache_env() -> dict[str, str]:
     configured = os.environ.get("IDEOGRAM_HF_CACHE")
     bundled = Path(__file__).resolve().parent.parent / "models" / "hf-cache"
@@ -59,15 +83,18 @@ def generate_with_local_cuda(
 
     base_seed = normalize_seed(params.seed, params.candidate_count)
     prompt_for_runtime = params.prompt
-    is_structured = params.execution_mode.value == "local_json" or optimized_prompt is not None
+    is_structured = True
     active_prompt_flow = prompt_flow
-    if is_structured:
-        if optimized_prompt is None:
+    if optimized_prompt is None:
+        if params.execution_mode.value == "local_json":
             optimized_prompt = parse_json_prompt(params.prompt)
             active_prompt_flow = "user_supplied_structured_json_prompt"
         else:
-            optimized_prompt = normalize_json_prompt_order(optimized_prompt)
-        prompt_for_runtime = json.dumps(optimized_prompt, ensure_ascii=False, separators=(",", ":"))
+            optimized_prompt = natural_language_prompt_to_json(params.prompt)
+            active_prompt_flow = "plain_prompt_wrapped_as_local_json_without_official_magic_prompt"
+    else:
+        optimized_prompt = normalize_json_prompt_order(optimized_prompt)
+    prompt_for_runtime = json.dumps(optimized_prompt, ensure_ascii=False, separators=(",", ":"))
     if active_prompt_flow is None:
         active_prompt_flow = "plain_prompt_without_official_magic_prompt"
 
