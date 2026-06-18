@@ -1,15 +1,19 @@
-# Ideogram 4 图像生成器
+# Ideogram 4 本地图像生成器 / Local CUDA AI Image Generator
 
 <p align="center">
   中文 | <a href="./docs/README.en.md">English</a>
 </p>
 
-复刻 TelkNet 项目中 `Ideogram 4` 图像生成工具的开源独立版。它保留原工具的参数习惯：`prompt / width / height / sampler_preset / seed / candidate_count`，并提供两条明确链路：
+想试 `Ideogram 4`，又希望图片真的在自己的 NVIDIA 显卡上生成？这个仓库就是 TelkNet 工具的开源本地版：前端界面照着原工具的手感来，后端走 `ideogram-ai/ideogram-4-nf4` 开放权重，Release 里直接打包 Windows / Linux 便携版和模型缓存。解压、运行、打开浏览器，少一点折腾，多一点出图。
 
-- **本地 CUDA 开放权重链路**：默认模式，不接入官方 Magic Prompt；完整自然语言提示词会封装为本地 Ideogram 4 JSON 后生成。
-- **官方提示词优化链路**：输入 Ideogram API Key 后，只调用官方 `/v1/ideogram-v4/magic-prompt`；返回的 `json_prompt` 会继续交给本地 CUDA Ideogram 4 运行时出图。
+项目保留 `prompt / width / height / sampler_preset / seed / candidate_count` 这些 Ideogram 4 常用参数，并把调用链路分得很清楚：
+
+- **本地 CUDA 开放权重生成**：默认模式，不请求官方 Magic Prompt；完整自然语言提示词会先封装成本地 Ideogram 4 JSON，再交给本地 CUDA 运行时生成 PNG。
+- **官方 Magic Prompt 提示词优化**：输入 Ideogram API Key 后，只调用官方 `/v1/ideogram-v4/magic-prompt`；拿到 `json_prompt` 后仍然回到本地 CUDA 出图，不调用官方生成图片接口。
 
 > 在线体验：已接入官方提示词优化链路的 TelkNet Ideogram 4 页面在 [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4)。本仓库是对应的开源本地版，启动后访问 `http://127.0.0.1:7860`。
+
+常见搜索词：`Ideogram 4 本地部署`、`Ideogram 4 CUDA`、`Ideogram 4 Magic Prompt`、`本地文生图`、`open-weight text-to-image`、`local AI image generator`、`Windows Linux portable AI image generation`。
 
 ## 截图
 
@@ -19,15 +23,15 @@
 
 ## 当前能力
 
-- **复刻 TelkNet Ideogram 工具界面**：顶部工具卡、提示词输入、模型亮点、画布预设、采样预设、候选图数量和生成按钮保持同类结构。
-- **中文默认 + 英文切换**：界面默认中文，可在右上角切换 English；README 同步提供中英两版。
-- **Seed 控件**：前端提供 `SEED（可选）` 输入框和骰子按钮；`0` 表示运行时随机，点击骰子生成固定 seed。
-- **本地开放权重模式**：通过官方 `ideogram-oss/ideogram4` 推理包调用 `ideogram-ai/ideogram-4-nf4` 或 `fp8` 权重。
-- **官方 Magic Prompt 模式**：封装 API Key 与 Magic Prompt，请求只到官方提示词优化接口；生成图片时使用优化后的 JSON Prompt 本地渲染到 `runtime/outputs/`。
-- **仅优化提示词**：官方模式下可只调用 Magic Prompt 获取 JSON Prompt，不触发本地出图；生成图片按钮会继续使用本地 CUDA。
-- **严格参数校验**：所有生成模式尺寸范围 `256-2048`、步进 `16`、最大宽高比 `6:1`；Magic Prompt 需要支持的比例桶；候选图 `1-4`；seed 范围 `0-2147483647`。
-- **不做静默降级**：缺少 API Key、缺少 HF_TOKEN、Magic Prompt 比例不支持、CUDA 不可用或权重未授权时都会显式失败。
-- **GitHub Actions 发布**：支持 Windows / Linux GPU CUDA NF4 便携包，Release 产物包含 Ideogram 4 NF4 权重缓存，运行时不再触发模型下载。
+- **TelkNet 风格界面**：提示词输入、模型亮点、画布预设、采样预设、候选图数量和生成按钮都放在顺手的位置，第一次打开也不用猜半天。
+- **中文默认，英文可切换**：软件界面默认中文，右上角可切到 English；README 也提供中英文两版。
+- **Seed 可控也可随机**：`SEED（可选）` 输入框配了骰子按钮；`0` 表示运行时随机，想复现结果就填固定 seed。
+- **本地开放权重出图**：通过官方 `ideogram-oss/ideogram4` 推理包调用 `ideogram-ai/ideogram-4-nf4` 或 `fp8` 权重，图片落到 `runtime/outputs/`。
+- **官方 Magic Prompt 只管提示词**：官方接口只负责把自然语言扩展成 Ideogram 4 结构化 JSON Prompt，真正的图像生成仍在本地 CUDA 完成。
+- **提示词优化可单独跑**：只想看看 Magic Prompt 会把句子改成什么样？点 `仅优化提示词` 即可，不会顺手把显卡点着。
+- **参数校验够硬**：尺寸 `256-2048`、16 步进、最大宽高比 `6:1`、候选图 `1-4`、seed `0-2147483647`；不合规就直接报错。
+- **失败会明说**：缺 API Key、缺 HF_TOKEN、比例不支持、CUDA 不可用、权重未授权，都会明确报错，不会偷偷换路线。
+- **Release 直接带模型**：GitHub Actions 构建 Windows / Linux GPU CUDA NF4 便携包，内置 Ideogram 4 NF4 权重缓存和 CUDA 运行时检查报告，目标机器不需要再手动下载模型。
 
 ## 调用链路说明
 
@@ -177,14 +181,16 @@ python run.py --self-test
 
 如果 seed 为 `0`，后端会生成一个随机 base seed；多候选图使用 `base_seed + index`。官方提示词优化模式同样使用这个本地 seed 规则，因为图片由本地 CUDA 生成，不会向官方出图接口发送 seed 或出图请求。
 
-## 模型与公开排行
+## 模型与公开资料
 
-Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，官方描述为 **9.3B 参数**、面向设计、文字排版、结构化布局与原生 2K 生成。公开资料中，官方 README / 模型卡强调：
+Ideogram 4 是 Ideogram 发布的首个开放权重文生图基础模型，规模为 **9.3B 参数**。它的特别之处不只是“能画图”，而是更偏设计工作流：能理解结构化 JSON prompt，能处理多语言文字、布局框、色彩调色板，也支持最高 2K 的本地生成。
 
-- 在 Design Arena 中是排名最靠前的开放权重设计向图像模型之一。
-- 在 ContraLabs 文字排版评测中，Ideogram 4 在设计师偏好和可用于客户工作评分上领先多个强基线。
-- 在 LMArena 图像榜单中，Ideogram 是排名靠前的开放权重图像实验室之一。
-- 开放权重模型支持结构化 JSON prompt、bbox 布局、色彩调色板和可读文字生成。
+公开资料里比较值得看的点有这些：
+
+- **开放权重设计模型**：官方模型卡把 Ideogram 4 定位为面向设计前沿的 open-weight text-to-image model。
+- **文字和排版更稳**：官方资料强调它在多语言文字渲染、标识、海报、标题和 UI 文本类任务上表现突出。
+- **结构化提示词是核心**：Ideogram 4 训练时就围绕结构化 JSON caption 展开，所以本项目会把自然语言 prompt 包装成本地 JSON；如果使用官方 Magic Prompt，则直接接收官方返回的 `json_prompt`。
+- **本地部署更清楚**：源码运行需要 Hugging Face 授权下载权重；Release 便携包已经把模型缓存打进去，适合只想下载软件直接跑的用户。
 
 参考链接：
 

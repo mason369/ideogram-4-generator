@@ -1,15 +1,19 @@
-# Ideogram 4 Generator
+# Ideogram 4 Local CUDA Image Generator
 
 <p align="center">
   <a href="../README.md">中文</a> | English
 </p>
 
-An open-source standalone version of the TelkNet `Ideogram 4` image-generation tool. It keeps the original parameter surface: `prompt / width / height / sampler_preset / seed / candidate_count`, and exposes two explicit execution paths:
+Want to try `Ideogram 4` without turning the whole image-generation step into an official API call? This project is the open-source local version of the TelkNet Ideogram 4 tool. It keeps the familiar UI, runs `ideogram-ai/ideogram-4-nf4` locally with CUDA, and ships Windows / Linux portable releases with the model cache already bundled.
 
-- **Local CUDA open-weight path**: default mode. No official Magic Prompt is used; the complete natural-language prompt is wrapped into local Ideogram 4 JSON before rendering.
-- **Official prompt optimization path**: enter an Ideogram API key and call only `/v1/ideogram-v4/magic-prompt`; the returned `json_prompt` is rendered by the local CUDA Ideogram 4 runtime.
+The tool keeps the common Ideogram 4 parameters: `prompt / width / height / sampler_preset / seed / candidate_count`, and makes the two execution paths explicit:
+
+- **Local CUDA open-weight generation**: the default path. It does not call the official Magic Prompt service; the full natural-language prompt is wrapped into local Ideogram 4 JSON and rendered locally.
+- **Official Magic Prompt optimization**: with an Ideogram API key, the app calls only `/v1/ideogram-v4/magic-prompt`; the returned `json_prompt` is still rendered by the local CUDA runtime, not by the official image-generation endpoint.
 
 Online demo: the TelkNet Ideogram 4 page with the official prompt-optimization flow is available at [https://telknet.cc/tools/ideogram-v4](https://telknet.cc/tools/ideogram-v4). This repository is the open-source local version; after launch, open `http://127.0.0.1:7860`.
+
+Search keywords: `Ideogram 4 local install`, `Ideogram 4 CUDA`, `Ideogram 4 Magic Prompt`, `open-weight text-to-image`, `local AI image generator`, `Windows Linux portable AI image generation`.
 
 ## Screenshots
 
@@ -19,15 +23,15 @@ Online demo: the TelkNet Ideogram 4 page with the official prompt-optimization f
 
 ## Features
 
-- TelkNet-style Ideogram workspace UI.
-- Chinese by default with an English switch.
-- Seed field with a dice randomizer button.
-- Local open-weight generation via `ideogram-oss/ideogram4`.
-- Official Magic Prompt flow that sends the natural-language prompt to the official optimizer only, then renders PNG outputs locally.
-- Prompt-only Magic Prompt action that returns JSON Prompt without local generation.
-- Strict parameter validation: all generation modes use 256-2048 px, 16 px step, max 6:1 aspect ratio, supported Magic Prompt aspect buckets, 1-4 candidates, and the documented seed range.
-- No silent fallback: missing keys, missing weights, unsupported Magic Prompt aspect buckets, and CUDA/runtime problems fail explicitly.
-- GitHub Actions for Windows and Linux GPU CUDA NF4 portable releases. Release artifacts include the model cache; no additional model download is required on the target machine.
+- **TelkNet-style workspace UI**: prompt input, model notes, canvas presets, sampler presets, candidate count, and generation actions are all on the first screen.
+- **Chinese first, English ready**: the app defaults to Chinese and can switch to English from the top-right corner; both README versions are maintained.
+- **Seed control with a dice button**: use `0` for runtime randomness, or enter a fixed seed when you want reproducible outputs.
+- **Local open-weight rendering**: runs `ideogram-ai/ideogram-4-nf4` or `fp8` through the official `ideogram-oss/ideogram4` runtime and writes PNG outputs to `runtime/outputs/`.
+- **Official Magic Prompt only optimizes prompts**: it expands natural language into Ideogram 4 structured JSON Prompt; actual image generation remains local CUDA.
+- **Prompt-only optimization**: inspect the Magic Prompt JSON without starting a local generation job.
+- **Strict parameter validation**: 256-2048 px canvas, 16 px steps, max 6:1 aspect ratio, 1-4 candidates, and the documented seed range.
+- **No silent fallback**: missing API keys, missing model access, unsupported aspect buckets, CUDA problems, and missing weights fail visibly.
+- **Portable releases with the model included**: GitHub Actions builds Windows and Linux GPU CUDA NF4 packages with the Ideogram 4 NF4 cache and runtime compatibility report inside.
 
 ## Source Checkout And Run
 
@@ -145,6 +149,12 @@ Official mode has two actions:
 
 - `Optimize Prompt Only`: calls `/v1/ideogram-v4/magic-prompt` and returns the structured JSON Prompt without generating an image.
 - `Generate Image`: calls Magic Prompt, then passes the returned JSON Prompt to the local CUDA runtime. This project does not call `/v1/ideogram-v4/generate`; Magic Prompt still requires an active API key.
+
+## Why Ideogram 4
+
+Ideogram 4 is Ideogram's first open-weight text-to-image foundation model, with **9.3B parameters** and a workflow built around structured JSON prompting. Its strengths are practical design tasks: readable text in images, multilingual typography, layout control, color palettes, and up to 2K local generation.
+
+This project keeps that workflow visible instead of hiding it behind a black box. Plain prompts are wrapped into local Ideogram 4 JSON, official Magic Prompt responses are kept as structured `json_prompt`, and every image is rendered locally through CUDA.
 
 ## References
 
